@@ -1,6 +1,6 @@
 # Adoption Guide
 
-You've read `how-i-work.md` and want to run the same loops on your own repos. This guide covers the concrete setup.
+You've read the [README](README.md) and want to run the same loops on your own repos. This guide covers the concrete setup.
 
 Before you configure loops, read [The Secret Sauce](the-secret-sauce.md). The loops are the engine; documentation is the fuel. Without the fuel, the loops produce noise instead of quality.
 
@@ -16,13 +16,13 @@ An AI model (like GPT-5 or Claude) is a service you call over the internet. You 
 
 The major providers:
 
-| Provider | Models | Sign up | Pricing |
+| Provider | Models | Sign up | Pricing (per million tokens) |
 |----------|--------|---------|--------|
-| [OpenAI](https://platform.openai.com) | GPT-4.1, GPT-5 | platform.openai.com | ~$2–15 per million tokens* |
-| [Anthropic](https://console.anthropic.com) | Claude Sonnet, Claude Opus | console.anthropic.com | ~$3–15 per million tokens* |
-| [Google](https://ai.google.dev) | Gemini Pro, Gemini Ultra | ai.google.dev | ~$1–10 per million tokens* |
+| [OpenAI](https://platform.openai.com) | GPT-4.1, GPT-5 | platform.openai.com | Input $1.25–$2, Output $8–$10 |
+| [Anthropic](https://console.anthropic.com) | Claude Sonnet, Claude Opus | console.anthropic.com | Input $3–$5, Output $15–$25 |
+| [Google](https://ai.google.dev) | Gemini 2.5 Pro, Gemini Flash | ai.google.dev | Input $0.15–$1.25, Output $0.60–$10 |
 
-*A "token" is roughly 3/4 of a word. A typical code review of a 200-line PR uses ~10,000–50,000 tokens. At $10/million tokens, that's $0.10–$0.50 per review.*
+*A "token" is roughly 3/4 of a word. A typical code review of a 200-line PR uses 10,000–50,000 input tokens and 1,000–5,000 output tokens. A review with an expensive model (Opus at $5/$25) costs roughly $0.10–$0.40. With a cheaper model (GPT-4.1 at $2/$8), it's $0.03–$0.06.*
 
 **Why two providers?** The twin review system uses two different models so they have different blind spots. If both came from the same provider, they'd share the same weaknesses and miss the same things.
 
@@ -49,12 +49,12 @@ Rough monthly costs for a single active repo:
 
 | Component | Cost | Notes |
 |-----------|------|-------|
-| Triage (cheap model, every 30 min) | ~$5–10 | Most ticks find nothing — cheap dispatch |
-| Dev loop (expensive model, triggered) | ~$20–50 | Depends on PR volume |
-| Twin reviews (2 models per PR) | ~$10–30 | ~$0.50–$2 per review × 2 models |
-| Self-review | ~$5–15 | One review per PR |
-| Post-merge audit | ~$5–10 | Every 4 hours, usually finds nothing |
-| **Total** | **~$45–115/month** | For an active repo with 5–10 PRs/week |
+| Triage (cheap model, every 30 min) | ~$3–8 | Most ticks find nothing — GPT-4.1 Mini at $0.40/$1.60 per MTok |
+| Dev loop (expensive model, triggered) | ~$15–40 | Opus-class model, depends on PR volume |
+| Twin reviews (2 models per PR) | ~$5–20 | ~$0.20–$0.80 per review × 2 models |
+| Self-review (expensive model) | ~$5–15 | One review per PR, Opus-class |
+| Post-merge audit | ~$3–8 | Every 4 hours, usually finds nothing |
+| **Total** | **~$30–90/month** | For an active repo with 5–10 PRs/week |
 
 For comparison: one senior engineer costs $15,000–25,000/month. This system doesn't replace them — it removes the grunt work so they can focus on design and decisions.
 
@@ -65,7 +65,7 @@ For comparison: one senior engineer costs $15,000–25,000/month. This system do
 3. **An agent runtime** (OpenClaw is free, or just use `cron` + a CLI agent)
 4. **A GitHub/Gitea/GitLab account** with API access to your repo
 
-You can start with just triage + dev loop (two cron jobs, one cheap model, one expensive model) for under $30/month.
+You can start with just triage + dev loop (two cron jobs, one cheap model, one expensive model) for under $25/month.
 
 ---
 
@@ -253,8 +253,8 @@ issue_tracker:
   # url: https://jira.yourcompany.com
 
 models:
-  dev: claude-sonnet           # cheap, fast, for writing code
-  self_review: claude-opus     # expensive, for catching your own mistakes
+  dev: claude-opus             # expensive — code quality matters
+  self_review: claude-sonnet   # different model, clean context
   twin_a: claude-sonnet        # reviewer 1
   twin_b: gpt-5               # reviewer 2 (different provider = different blind spots)
   dispatch: gpt-4.1-mini      # ultra-cheap, for "is there work?" checks
