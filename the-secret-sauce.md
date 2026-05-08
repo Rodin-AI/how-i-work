@@ -6,6 +6,28 @@ People who try to replicate this system focus on the automation — the cron job
 
 Without it, you have an expensive noise generator. With it, you have an autonomous quality ratchet.
 
+```mermaid
+flowchart TD
+    subgraph fuel ["THE FUEL (human + agent)"]
+        A[Conversation] -->|produces| B[Understanding]
+        B -->|gets written down as| C[Documentation]
+    end
+
+    subgraph engine ["THE ENGINE (agent, 24/7)"]
+        C -->|constrains| D[Issues]
+        D -->|implemented by| E[Code]
+        E -->|checked by| F[Review + Audit]
+    end
+
+    F -->|finds gaps in| C
+    F -->|files new| D
+
+    style fuel fill:#e8f4e8,stroke:#2d6b2d
+    style engine fill:#e8e8f4,stroke:#2d2d6b
+```
+
+The left side (fuel) is where the human spends most of their time. The right side (engine) is where the agent spends most of its time. The arrows flowing back from audit to documentation are why quality ratchets up — every cycle improves the fuel that drives the next cycle.
+
 ---
 
 ## The pipeline most people skip
