@@ -172,11 +172,13 @@ In practice, the time split looks roughly like:
 
 | Activity | Time | Leverage |
 |----------|------|----------|
-| Conversation + thinking | 20% | Highest — shapes everything downstream |
-| Documentation | 20% | High — amortizes across all future work |
+| Conversation + thinking | 30% | Highest — shapes everything downstream |
+| Documentation | 25% | High — amortizes across all future work |
 | Issue creation | 10% | Medium — precision here prevents waste later |
-| Implementation | 30% | Medium — this is where agents shine |
-| Review + audit | 20% | High — closes the loop |
+| Implementation | 20% | Medium — this is where agents shine |
+| Review + audit | 15% | High — closes the loop |
+
+Read that again: **conversation and documentation together take more time than implementation.** That's not a failure of efficiency — it's the whole point. The thinking IS the work. The code is just the artifact that falls out of clear thinking.
 
 Most teams spend 80% on implementation and 5% on documentation. Then they wonder why automation doesn't help much. The automation amplifies whatever understanding exists. If the understanding is shallow, the automation produces shallow work at scale.
 
