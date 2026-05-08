@@ -11,7 +11,7 @@ This page covers how to build each type of documentation from scratch, and — c
 | Type | Answers the question | Example |
 |------|---------------------|---------|
 | Domain glossary | "What IS this thing?" | "An Order is a request to buy or sell..." |
-| Conventions | "How do we do things HERE?" | "Error handling uses `{:ok, result}` tuples..." |
+| Conventions | "How do we do things HERE?" | "Errors are wrapped with context at every level..." |
 | Reference patterns | "Show me how to add a new X" | A complete command handler with tests |
 | Ecosystem patterns | "How does the ECOSYSTEM do this?" | Error handling patterns from kubernetes, etcd |
 | Implementation docs | "How does this subsystem work internally?" | "The order pipeline uses a GenStage flow..." |
@@ -98,28 +98,29 @@ A Position can be long (positive quantity) or short (negative quantity).
 ```markdown
 # Conventions
 
-## File & Module Structure
-- One module per file
-- File path mirrors module name: `lib/myapp/orders/validator.ex` → `MyApp.Orders.Validator`
-- Context modules (top-level API) go in `lib/myapp/<context>.ex`
-- Internal modules go in `lib/myapp/<context>/<module>.ex`
+## Package Structure
+- One package per directory
+- Package name matches directory name: `internal/orders/validator.go` → package `validator`
+- Public API packages in `pkg/`, internal packages in `internal/`
+- One struct per file when the struct has methods
 
 ## Error Handling
-- Public functions return `{:ok, result}` or `{:error, reason}`
-- Internal functions may raise (caller handles at boundary)
-- Never rescue in the middle of a pipeline — let it fail to the boundary
-- Log at the boundary, not at the call site
+- Always wrap errors with context: `fmt.Errorf("fetching order %s: %w", id, err)`
+- Never return bare `err` without wrapping
+- Log at the boundary (HTTP handler, queue consumer), not at the call site
+- Use sentinel errors for expected conditions: `var ErrNotFound = errors.New("not found")`
 
 ## Testing
-- Unit tests: `test/<context>/<module>_test.exs`
-- Integration tests: `test/integration/<feature>_test.exs`
-- All tests async:true unless they touch shared state (DB, PubSub)
-- Use factories (ExMachina) for test data, never raw inserts
+- Unit tests: `<file>_test.go` in the same package
+- Integration tests: `_test.go` with build tag `//go:build integration`
+- Table-driven tests for any function with >2 cases
+- Use `testify/require` for assertions (not `assert` — fail fast)
 
 ## Naming
-- Boolean functions: `is_<thing>?` or `has_<thing>?`
-- Conversion functions: `to_<target>` (e.g., `to_map`, `to_string`)
-- Modules: nouns (`OrderValidator`), not verbs (`ValidateOrder`)
+- Interfaces: verb phrases (`OrderValidator`, `PositionFetcher`)
+- Constructors: `NewOrderService(...)` not `CreateOrderService(...)`
+- Boolean methods: `IsValid()`, `HasPosition()` not `CheckValid()`
+- Unexported helpers: `doThing()` not `_doThing()` or `helperDoThing()`
 ```
 
 **Common mistakes:**
@@ -147,67 +148,81 @@ A Position can be long (positive quantity) or short (negative quantity).
 **Example:**
 
 ```markdown
-# Pattern: Adding a New Command
+# Pattern: Adding a New API Endpoint
 
-Commands are the write path in the CQRS system. Every state mutation
-goes through a command.
+Endpoints are the entry point for all mutations. Every state change
+goes through an HTTP handler → service → repository.
 
 ## Files to create
 
-1. `lib/myapp/commands/do_thing.ex` — the command struct
-2. `lib/myapp/commands/do_thing_handler.ex` — the handler
-3. `test/myapp/commands/do_thing_handler_test.exs` — tests
+1. `internal/orders/handler.go` — HTTP handler (or add a method to existing)
+2. `internal/orders/service.go` — business logic
+3. `internal/orders/service_test.go` — tests
+4. `api/openapi.yaml` — update the spec
 
-## 1. The Command struct
+## 1. The Handler
 
-```elixir
-defmodule MyApp.Commands.DoThing do
-  @moduledoc "Describes the intent to do the thing."
+```go
+func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+    var req CreateOrderRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        respondError(w, http.StatusBadRequest, "invalid request body")
+        return
+    }
 
-  @enforce_keys [:account_id, :instrument_id]
-  defstruct [:account_id, :instrument_id, :quantity, :metadata]
+    if err := req.Validate(); err != nil {
+        respondError(w, http.StatusUnprocessableEntity, err.Error())
+        return
+    }
 
-  @type t :: %__MODULE__{
-    account_id: String.t(),
-    instrument_id: String.t(),
-    quantity: Decimal.t() | nil,
-    metadata: map()
-  }
-end
+    order, err := h.service.CreateOrder(r.Context(), req.ToCommand())
+    if err != nil {
+        handleServiceError(w, err)
+        return
+    }
+
+    respondJSON(w, http.StatusCreated, order)
+}
 ```
 
-## 2. The Handler
+## 2. The Service
 
-```elixir
-defmodule MyApp.Commands.DoThingHandler do
-  @behaviour MyApp.CommandHandler
+```go
+func (s *Service) CreateOrder(ctx context.Context, cmd CreateOrderCommand) (*Order, error) {
+    account, err := s.accounts.Get(ctx, cmd.AccountID)
+    if err != nil {
+        return nil, fmt.Errorf("fetching account %s: %w", cmd.AccountID, err)
+    }
 
-  @impl true
-  def handle(%DoThing{} = cmd, context) do
-    with {:ok, account} <- fetch_account(cmd.account_id, context),
-         :ok <- validate_permissions(account, :do_thing),
-         {:ok, result} <- execute(cmd, account) do
-      {:ok, result}
-    end
-  end
-end
+    if err := s.validatePermissions(account, PermissionCreateOrder); err != nil {
+        return nil, err
+    }
+
+    order, err := s.repo.Create(ctx, cmd)
+    if err != nil {
+        return nil, fmt.Errorf("creating order: %w", err)
+    }
+
+    return order, nil
+}
 ```
 
 ## 3. Tests
 
-- Happy path: command succeeds with valid inputs
-- Validation: rejects invalid account_id, missing required fields
-- Permissions: returns error when account lacks permission
-- Idempotency: same command twice produces same result (if applicable)
+- Happy path: valid request → order created, correct response
+- Validation: rejects missing fields, invalid account ID
+- Permissions: returns 403 when account lacks permission
+- Conflict: returns 409 on duplicate idempotency key (if applicable)
 
 ## Why this structure?
 
-- Commands are data (structs), not behavior. Handlers are behavior.
-  This separation lets us serialize commands, replay them, and test handlers in isolation.
-- `@behaviour` ensures every handler implements the same interface.
-  The router dispatches by pattern matching on the command struct.
-- `with` chains for the happy path. Each clause can fail independently
-  and the error propagates without nesting.
+- Handler does ONLY: parse, validate, delegate, respond. No business logic.
+  This lets us test business logic without HTTP.
+- Service accepts a Command struct, not raw request fields.
+  Commands are the internal API — they can come from HTTP, queues, or tests.
+- Errors are wrapped at every level with context.
+  `fmt.Errorf("creating order: %w", err)` gives a full trace without logging.
+- Repository is an interface. Service doesn't know if it's Postgres, DynamoDB, or a mock.
 ```
 
 **Common mistakes:**
@@ -226,7 +241,7 @@ end
 
 **How to build one:**
 
-1. **Pick 3-5 authoritative projects** in your ecosystem. For Go: kubernetes, etcd, cockroachdb. For Elixir: phoenix, ecto, oban. For Rust: tokio, serde, axum.
+1. **Pick 3-5 authoritative projects** in your ecosystem. For Go: kubernetes, etcd, cockroachdb. For TypeScript: next.js, prisma, trpc. For Rust: tokio, serde, axum.
 
 2. **Pick a concern** (error handling, testing, concurrency, module structure).
 

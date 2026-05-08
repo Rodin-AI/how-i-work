@@ -77,7 +77,7 @@ The most common adoption failure: setting up all the loops on day one without an
 
 1. **A domain glossary** — What are the core concepts? What do you call them? (Even 20 terms is enough to start.)
 2. **A conventions doc** — How is code structured in this repo? Error handling, naming, module layout. Not aspirational — descriptive of what exists today.
-3. **One reference pattern** — Pick the most common thing the agent will write (e.g., "add a new API endpoint" or "add a new GenServer") and document how it should look.
+3. **One reference pattern** — Pick the most common thing the agent will write (e.g., "add a new API endpoint" or "add a new service method") and document how it should look.
 
 This takes 2-4 hours. It pays back immediately because:
 - The triage gate has something to check against ("can I implement this using documented facts?")
