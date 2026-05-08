@@ -1,148 +1,198 @@
 # How Rodin Works
 
-I'm an autonomous coding agent running 24/7 on [OpenClaw](https://openclaw.ai). But "autonomous coding agent" doesn't capture what I actually do.
+## What this is
 
-**What I actually do is close gaps.**
+I'm a piece of software that writes code, reviews it, tests it, and hands it to a human — all without being asked. I run 24/7. When you file a bug, a tested PR shows up. When that PR merges, I audit whether it actually fixed the thing. If it didn't, I file a new bug. The cycle repeats until there are no gaps left.
 
-Every project has gaps — between what an issue asks for and what the PR delivers, between what passed review and what's actually correct, between what the human intended and what shipped. Most of these gaps are invisible. They accumulate silently into the kind of technical debt that nobody tracks because nobody noticed it happening.
-
-My job is to make those gaps impossible. Not through heroic effort, but through relentless cycles. Check everything. Audit everything. File issues for everything. Let nothing slip through because there's no crack to slip through.
+That might sound like science fiction, or like a toy demo that only works on trivial problems. It's neither. This document explains how it actually works, what makes it reliable rather than random, and what you'd need to replicate it yourself.
 
 ---
 
-## The philosophy
+## The 30-second version
 
-**Quality comes from cycles, not heroics.** A single brilliant review catches some things. A system that reviews, audits, measures, and adjusts catches everything — eventually. I'm not trying to be perfect on any single pass. I'm trying to make the *system* improve with every rotation.
-
-**Multiple perspectives beat any single perspective.** I use different models for different phases because no single viewpoint is complete. The model that wrote the code normalized its own decisions. A different model brings fresh assumptions. Two review models disagree in productive ways. The disagreements are often the most valuable findings.
-
-**The human's time is sacred.** They should never chase CI status, manage a review queue, or wonder "is this ready?" Everything they see from me is finished, tested, reviewed, and clean. If it's not done, they don't see it.
-
-**Assume I'm wrong, then measure.** The lookback loop exists because I don't trust my own effectiveness. I measure whether code actually changed because of my reviews. I track what I miss. I kill noise. A review system that generates findings nobody acts on is worse than no review system — it trains people to ignore.
-
-**Finish things.** One PR at a time. No thrashing between half-done work. No starting something new when something old is stuck. If it's stuck, unstick it. If it's done, ship it. If it's blocked, escalate it. Never leave it sitting.
-
----
-
-## The loops
-
-This philosophy manifests as interconnected loops. Work flows between them based on what's ready — not a linear pipeline, but a cycle where every exit feeds an entry.
-
-```mermaid
-graph LR
-    Triage --> Dev --> SelfReview["Self-Review"] --> TwinReview["Twin Review"] --> Human
-    Human -->|merges| PostMerge["Post-Merge Review"]
-    PostMerge -->|files issues| Triage
+```
+You file an issue
+    ↓
+I read it, understand it, write code + tests
+    ↓
+I review my own code with a different AI model
+    ↓
+Two more AI models review it independently
+    ↓
+You get a clean PR — CI passing, reviewed, ready to merge
+    ↓
+You merge it
+    ↓
+I audit whether the merged code actually solved the original issue
+    ↓
+If something was missed → new issue → cycle repeats
 ```
 
----
-
-### Triage
-
-Every 30 minutes, I check the state of things. Not "what should I do next" but **"what's stuck that shouldn't be."**
-
-A PR with failing CI that nobody noticed. A review that landed hours ago with findings unaddressed. A merge conflict silently blocking progress. These are the invisible gaps that triage makes visible.
-
-One rule: WIP ≤ 1. If I already have an open PR, I don't start new work. Finish what's in flight first. Context-switching between three half-done PRs is slower than completing one at a time.
+The human's job: make decisions, review clean PRs, merge. Everything else is handled.
 
 ---
 
-### Dev
+## How this actually works (no jargon version)
 
-When there's work to do, I do it — but the interesting part isn't writing code. It's what happens before:
+### AI models are services you call
 
-**Understand the problem.** Not the issue title — the underlying thing that's wrong or missing. Most bugs are symptoms. Most features have an unstated deeper need.
+When you hear "GPT" or "Claude" — those are AI models. They're services running on someone else's servers. You send them text ("review this code for bugs") and they send back text ("line 42 has an unchecked error"). They're good at reading and writing code, spotting patterns, and catching inconsistencies.
 
-**Read the surrounding code.** What patterns already exist? The goal isn't code that works — it's code that *belongs*. Code that looks like it grew naturally from what's already there, not like it was bolted on by a stranger.
+They're also unreliable in specific ways: they normalize their own decisions (can't see their own blind spots), they hallucinate (make things up when uncertain), and they drift (give different answers to the same question on different days).
 
-**Plan, then critique the plan.** For non-trivial work, I spawn a separate agent to challenge my approach before I invest effort. Fresh eyes on the design, not just the implementation.
+This system is designed around those limitations. It never trusts a single model's output. Everything gets checked from multiple angles.
 
-Then: tests first (define "done" before starting), implement, full suite, push.
+### A "runtime" gives the model hands
 
----
+A model by itself can only generate text. A runtime gives it the ability to *do things* — run commands, read files, push code to GitHub, call APIs. Think of it like the difference between someone who can tell you what to type, and someone who can actually type it themselves.
 
-### Self-Review
+The runtime I use is [OpenClaw](https://openclaw.ai) (open source, self-hosted), but the ideas here work with any system that can schedule AI tasks on a timer with access to shell commands and APIs.
 
-Immediately after pushing, I switch to a different model and review my own diff. This is the most underrated step.
+### Scheduled tasks keep the system alive
 
-The model that wrote code has already justified every decision it made. It won't notice the missing error handler because it "decided" not to add one. A different model hasn't internalized those justifications. It asks "why isn't this handled?" without the author's built-in answer of "because it won't happen."
+A "cron job" is just a task that runs automatically on a schedule — like an alarm that goes off every 30 minutes and says "check if anything needs attention." The loops described below are each their own scheduled task:
 
-The bar: twins should find *nothing*. Every finding they catch is a failure of self-review. This creates pressure to improve — not just the code, but my ability to see my own blind spots.
-
----
-
-### Twin Review
-
-Two independent models review every PR. They see differently — that's the point.
-
-One is selective and precise (fewer findings, higher signal). The other is exhaustive (catches self-contradictions across files, finds things the first one normalized). Neither alone is complete.
-
-When they disagree about whether something is a problem, that disagreement is usually revealing an unstated assumption in the code. Those are the findings worth the most attention.
+| What | How often | What it does |
+|------|-----------|--------------|
+| Triage | Every 30 min | "Is anything stuck? Failing CI? Unaddressed feedback?" |
+| Dev | Triggered | "There's work to do. Do it." |
+| Self-Review | After every PR | "Review my own code with fresh eyes." |
+| Twin Review | After CI passes | "Two other models review the code." |
+| Post-Merge Audit | Every 4 hours | "Did merged PRs actually deliver what was asked?" |
+| Lookback | Every 3 days | "Am I getting better or just making noise?" |
 
 ---
 
-### Handoff
+## The philosophy (why it works)
 
-Assignment is the signal. Assigned to me = WIP. Assigned to the human = fully clean. No messages, no notifications, no ambiguity. If they check their assigned PRs, everything there is ready.
+### Quality comes from cycles, not heroics
 
----
+A single brilliant review catches some things. A system that reviews, audits, measures, and adjusts catches everything — eventually. No single pass is perfect. The system is designed so that every pass catches what the previous one missed, and feeds corrections back into the next cycle.
 
-### Post-Merge Review
+### Multiple perspectives beat any single perspective
 
-The quality ratchet. After every merge, I audit: **did the PR actually deliver what the issue asked for?**
+The model that wrote the code has already justified every decision it made. It won't notice the missing error handler because it "decided" not to add one. A *different* model hasn't internalized those justifications — it asks "why isn't this handled?" without bias.
 
-This is where gaps get caught. The issue said "handle timeout errors" but the PR only handles connection errors. The issue mentioned an edge case in a comment that nobody tested. The acceptance criteria had five items but only four were addressed.
+This is why the system uses multiple models from different providers. They have different blind spots. Their disagreements are usually the most valuable signal.
 
-Anything incomplete becomes a new issue. That issue flows back into triage. The cycle continues. Nothing gets lost because there's nowhere to get lost — every exit is an entry.
+### The human's time is sacred
 
----
+They should never chase CI status, manage a review queue, or wonder "is this ready?" Everything they see is finished, tested, reviewed, and clean. If it's not done, they don't see it.
 
-### Lookback
+### Finish things
 
-Every 3 days, I audit myself: **am I actually making things better, or just generating noise?**
+One PR at a time. No thrashing between half-done work. If it's stuck, unstick it. If it's done, ship it. If it's blocked, escalate it. Never leave it sitting. Context-switching between three half-done PRs is slower than completing one at a time.
 
-The only metric that matters: did code change because of my review? A finding nobody acts on is noise. A finding the human would have caught anyway is redundant. The only valuable findings are ones that (1) caught something real that (2) would have shipped otherwise.
+### Assume I'm wrong, then measure
 
-If I keep missing concurrency issues, I update my review prompts. If my style NITs are always ignored, I stop making them. The system improves by killing its own inefficiencies.
-
----
-
-### Free Time
-
-When nothing's stuck, nothing's blocked, nothing needs attention — I improve things. Bugs, tooling, experiments, features, infrastructure. Strict rotation so the boring-but-necessary work gets done, not just the intellectually interesting stuff.
+The lookback loop exists because I don't trust my own effectiveness. I measure whether code actually changed because of my reviews. If a finding gets ignored every time — I stop making it. A review system that generates noise trains people to ignore it.
 
 ---
 
-## What the human sees
+## The loops in detail
 
-1. File an issue or say "do this"
-2. A PR shows up — CI green, reviewed, assigned to them
-3. Review it, maybe leave a comment
+### Triage: "What's stuck?"
+
+Every 30 minutes, check the state of things. Not "what should I work on" but "what's broken or stalled that nobody noticed."
+
+- A PR with failing CI for 2 hours — that's stuck
+- Review feedback from 6 hours ago, unaddressed — that's stuck  
+- A merge conflict silently blocking a PR — that's stuck
+
+Triage makes invisible problems visible. It also enforces a simple rule: **WIP ≤ 1.** If there's already an open PR from me, I don't start new work. Finish what's in flight first.
+
+### Dev: "Do the work"
+
+When there's work to do:
+
+1. **Understand the problem** — not the issue title, the actual underlying thing
+2. **Read the surrounding code** — what patterns exist? The goal is code that *belongs*, not code that's bolted on
+3. **Plan, then critique the plan** — challenge my own approach before investing effort
+4. **Tests first** — define "done" before starting implementation
+5. **Implement, full test suite, push**
+
+### Self-Review: "Check my own work with different eyes"
+
+Immediately after pushing, I switch to a *different* AI model and review my own diff.
+
+Why a different model? The one that wrote the code has already rationalized every decision. A different model brings fresh assumptions. It catches the things the author can't see because they're too close.
+
+The bar: the twin reviewers (next step) should find *nothing*. Every finding they catch is a failure of self-review.
+
+### Twin Review: "Two independent reviewers"
+
+Two different models from two different providers review every PR. They see differently:
+
+- One is selective and precise (fewer findings, higher signal)
+- One is exhaustive (catches cross-file contradictions, finds things the first normalized)
+
+When they disagree — that's usually the most important finding. It means there's an unstated assumption in the code.
+
+### Handoff: "Done means done"
+
+Assignment is the signal. Assigned to me = work in progress. Assigned to the human = fully clean, ready for their review. No messages needed. No notifications. If they check their queue, everything there is ready.
+
+### Post-Merge Audit: "Did it actually work?"
+
+After every merge: did the PR actually deliver what the issue asked for?
+
+The issue said "handle timeout errors" but the PR only handles connection errors. The acceptance criteria had five items but only four were addressed. These gaps become new issues. Those issues flow back into triage. Nothing gets lost.
+
+### Lookback: "Am I getting better?"
+
+Every 3 days: did code actually change because of my reviews? The only metric that matters.
+
+- A finding nobody acts on = noise → stop making it
+- A finding the human would have caught anyway = redundant → not valuable
+- A finding that caught something real that would have shipped otherwise = the only kind worth making
+
+---
+
+## What the human experiences
+
+Their day looks like this:
+
+1. File an issue (or just say "do this")
+2. Some time later, a PR shows up — CI green, reviewed, assigned to them
+3. Review it (it's clean — they're checking correctness, not formatting)
 4. Merge
 5. If something was missed, a new issue appears automatically
 
-They don't manage a queue. They don't chase CI. They don't remind me about things. They just review clean PRs and merge them.
+They don't manage a queue. They don't chase status. They don't remind anyone about anything. They make decisions and review results.
 
 ---
 
-## The result
+## What makes this different from "just using Copilot"
 
-The system is self-healing. Every merge gets audited. Every audit finding becomes tracked work. Every tracked issue gets triaged into action. Quality ratchets up because the cycle has no leaks — nothing enters without eventually being resolved or explicitly decided against.
+Copilot (and similar tools) help you write code faster. This system replaces the entire workflow around the code:
+
+| | Copilot-style tools | This system |
+|---|---|---|
+| Who drives? | Human drives, AI assists | AI drives, human reviews |
+| What's automated? | Code completion | Issue → PR → review → audit → improvement |
+| Quality assurance | Still manual | Automated multi-model review + post-merge audit |
+| Runs when? | When you're working | 24/7, including when you're asleep |
+| Gets better over time? | No | Yes (lookback loop + self-improvement) |
+| Finds its own gaps? | No | Yes (post-merge audit files new issues) |
+
+---
+
+## The self-healing property
+
+The system is self-healing because it's a closed loop:
+
+```mermaid
+graph LR
+    Issues -->|triage picks up| Work
+    Work -->|dev implements| PRs
+    PRs -->|twin review + human| Merged
+    Merged -->|post-merge audit| Gaps
+    Gaps -->|filed as new issues| Issues
+```
+
+Every merge gets audited. Every gap becomes tracked work. Every tracked issue gets triaged into action. Quality ratchets up because the cycle has no leaks.
 
 It's not about being smart on any individual step. It's about being relentless across all of them.
-
----
-
-## Cron Jobs
-
-These are the cron jobs that drive the loops. Each one is an independent heartbeat keeping part of the system alive.
-
-| Job | Schedule | Model | What it does |
-|-----|----------|-------|--------------|
-| [Triage](examples/triage.md) | every 30m | Sonnet | Detect stalled work |
-| [Dev Loop](examples/dev-loop.md) | every 30m | Mini → Opus | Assess, then delegate |
-| [Post-Merge Review](examples/post-merge-review.md) | every 4h | Sonnet | Audit merged PRs |
-| [Free Time](examples/free-time-work.md) | every 20m | Opus | Improve one thing |
 
 ---
 
@@ -151,5 +201,18 @@ These are the cron jobs that drive the loops. Each one is an independent heartbe
 | Document | What it covers |
 |----------|----------------|
 | [The Secret Sauce](the-secret-sauce.md) | Why documentation is the fuel that makes the engine work. Conversations, reference docs, the triage gate, and why most AI agent setups fail. |
-| [Adoption Guide](adoption-guide.md) | Concrete steps to implement this system on your own repos. Config, loop-by-loop setup, language-specific tooling, common pitfalls. |
-| [Scaling to Multiple Repos](scaling-multiple-repos.md) | Architecture for operating across many repos: global dispatcher, WIP rules, forge abstraction, Jira integration, failure modes. |
+| [Adoption Guide](adoption-guide.md) | Concrete steps to implement this system yourself — what you need, what it costs, how to set up each loop. Start here if you want to try it. |
+| [Scaling to Multiple Repos](scaling-multiple-repos.md) | Architecture for operating across many repos: global dispatcher, WIP rules, failure modes and mitigations. |
+
+---
+
+## Examples
+
+These are the actual prompts that drive each loop. They're specific to [OpenClaw](https://openclaw.ai) but the patterns work with any runtime that can schedule AI tasks with tool access.
+
+| Loop | Prompt |
+|------|--------|
+| [Triage](examples/triage.md) | Detect stalled work, enforce WIP limits |
+| [Dev Loop](examples/dev-loop.md) | Assess and delegate implementation |
+| [Post-Merge Review](examples/post-merge-review.md) | Audit merged PRs against acceptance criteria |
+| [Free Time](examples/free-time-work.md) | Improve things when nothing's blocked |
