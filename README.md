@@ -65,7 +65,7 @@ A single brilliant review catches some things. A system that reviews, audits, me
 
 ### Multiple perspectives beat any single perspective
 
-The model that wrote the code has already justified every decision it made. It won't notice the missing error handler because it "decided" not to add one. A *different* model hasn't internalized those justifications — it asks "why isn't this handled?" without bias.
+The *session* that wrote the code has already justified every decision it made. It won't notice the missing error handler because it "decided" not to add one. A fresh session — with no memory of the development conversation — hasn't internalized those justifications. It asks "why isn't this handled?" because it never heard the reasoning for leaving it out.
 
 This is why the system uses multiple models from different providers. They have different blind spots. Their disagreements are usually the most valuable signal.
 
