@@ -10,9 +10,11 @@ An ecosystem pattern file documents how authoritative open-source projects
 solve a specific concern — extracted from their source code, not their docs.
 The result is a citable reference your agent checks before writing code.
 
-**See a real example of the finished output:** A completed ecosystem patterns repo has this structure:
+**See a real example of the finished output:** [Rodin-AI/go-patterns](https://github.com/Rodin-AI/go-patterns) — patterns from the Go standard library, kubernetes, and prometheus with file:line citations.
+
+Repo structure:
 ```
-<lang>-patterns/
+go-patterns/
 ├── patterns/       # extracted patterns with file:line citations
 ├── smells/         # anti-patterns to avoid (also cited)
 └── sources/        # raw analysis notes per project

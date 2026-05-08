@@ -112,7 +112,7 @@ Curated knowledge about how authoritative open-source projects solve common prob
 
 **Process:** Pick 3-5 authoritative projects (Go: kubernetes, etcd, cockroachdb. TypeScript: next.js, prisma, trpc). Pick a concern (error handling, testing, concurrency). Read their source code — not docs, source. Document what you find, including where they disagree.
 
-→ **[See complete example](examples/ecosystem-pattern.md)** · **[Build + Validate prompt](prompts/build-ecosystem-patterns.md)**
+→ **[See complete example](examples/ecosystem-pattern.md)** · **[Build + Validate prompt](prompts/build-ecosystem-patterns.md)** · **[Real repo: go-patterns](https://github.com/Rodin-AI/go-patterns)**
 
 **Pitfalls:**
 - Documenting what you THINK the community does (verify against source)
