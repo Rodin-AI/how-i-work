@@ -452,6 +452,109 @@ Test databases specifically: either use a unique DB name per worker (`myapp_test
 
 ---
 
+## Failure modes and mitigations
+
+The multi-repo architecture introduces failure modes that don't exist in per-repo setups. Address these before they bite.
+
+### Dispatcher is a single point of failure
+
+The whole system routes through one cron job. If it fails — model timeout, rate limit, network blip — nothing happens across any repo. The per-repo approach was inefficient but resilient.
+
+**Mitigation:**
+- Track consecutive dispatcher failures. If N consecutive runs fail (e.g., 3), alert the human.
+- Health endpoint or heartbeat monitor that specifically checks "has the dispatcher fired successfully in the last 2× its interval?"
+- Consider a fallback: if the dispatcher hasn't run in 2 hours, a simpler per-repo check (just CI status) fires as a degraded backup.
+
+```yaml
+health:
+  dispatcher_max_consecutive_failures: 3
+  alert_if_silent_for: 2h
+  fallback: per_repo_ci_check   # degraded mode, not full dispatch
+```
+
+### Stale handoff deadlock
+
+WIP limits block new work when a PR is open. But what if the human never reviews it? A PR that sits for a week means that repo is frozen. No work happens because WIP=1 and the slot is occupied by something nobody is looking at.
+
+**Mitigation:**
+- Track time-since-handoff. If a PR has been assigned to the human for >48h with no activity (no comments, no merge, no rejection), escalate:
+  1. First: ping the reviewer ("PR #42 has been waiting 48h")
+  2. After 72h: reduce that PR's WIP weight to 0.5 (allow new work to start in that repo)
+  3. After 1 week: auto-mark as stale, fully release the WIP slot
+- The human can also explicitly say "I'll get to this later" — that resets the clock.
+
+```yaml
+stale_thresholds:
+  ping_reviewer_after: 48h
+  reduce_wip_weight_after: 72h
+  release_wip_slot_after: 168h   # 1 week
+```
+
+### Gap loop has no circuit breaker
+
+Post-merge review finds gaps → files new issues → triage picks them up → dev loop implements them → post-merge finds more gaps. A strict auditor could generate work indefinitely. This is a runaway feedback loop.
+
+**Mitigation:**
+- Gap issues filed by post-merge review are tagged differently (e.g., `audit-gap` label or specific issue type).
+- The triage gate DOES NOT auto-assign audit-gap issues. They require human triage before becoming eligible for the dev loop.
+- The human decides: "yes, fix this" (assigns to agent) or "not worth it" (closes the issue).
+- Rate limit: post-merge review files at most 3 gap issues per run. If it finds more, it batches them into one summary issue for the human to break apart.
+
+```
+post_merge_review:
+  gap_issues_require_human_triage: true
+  max_gaps_per_run: 3
+  overflow_behavior: batch_into_summary
+```
+
+This is critical. Without this gate, the system can create infinite work from finite merges. The human must remain the arbiter of what's worth fixing.
+
+### Lookback self-modification risk
+
+The lookback loop identifies noisy patterns and recommends prompt changes. But should it *apply* those changes autonomously?
+
+**Answer: no.** Lookback RECOMMENDS changes. A human approves them.
+
+- Lookback writes recommendations to a file or posts them in a report
+- The human reviews and either applies the change or dismisses it
+- The agent never modifies its own review prompts without human sign-off
+
+Self-modification of the review system is a meaningful capability change. Getting it wrong means the system could silence legitimate findings or amplify noise. This needs human oversight.
+
+### Momentum tiebreaker starves quiet repos
+
+Within the same priority level, preferring active repos over quiet ones means a quiet repo could wait forever for free-time work. The active repo always wins because it always has more "momentum."
+
+**Mitigation:** Replace momentum with **longest-since-last-touch.** The repo that hasn't received attention in the longest time gets priority. This naturally round-robins across repos during free time while still allowing urgency to override.
+
+```
+tiebreaker_for_same_priority:
+  1. longest_since_last_agent_activity   # prevents starvation
+  2. smaller_task_first                   # throughput
+  3. alphabetical                         # deterministic fallback
+```
+
+### CI outage vs code failure are indistinguishable
+
+If CI infrastructure goes down, every repo shows CI failures. The dispatcher will prioritize them all urgently and spawn workers that try to "fix" code that isn't broken.
+
+**Mitigation:**
+- If ALL PRs across ALL repos show CI failures simultaneously, that's almost certainly infrastructure, not code. The dispatcher should detect this pattern and:
+  1. Skip CI-failure priority for this run
+  2. Alert the human: "CI appears to be down globally (N/N PRs failing)"
+  3. Wait for next run to re-check
+- Single-repo CI failure = likely code problem. Cross-repo simultaneous CI failure = likely infrastructure.
+- Additionally: check if CI even *ran* (pending vs failed). Infrastructure outages often show as "pending" (never started) rather than "failed" (ran and broke).
+
+```
+ci_outage_detection:
+  threshold: all_repos_failing  # or >80% of PRs failing simultaneously
+  action: skip_and_alert
+  distinguish: pending_vs_failed  # pending = infra, failed = code
+```
+
+---
+
 ## Summary
 
 Single-repo is prompt-as-config. Multi-repo is config-as-data with a generic dispatcher.
