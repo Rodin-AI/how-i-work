@@ -275,3 +275,112 @@ Conversations produce understanding. Understanding gets documented. Documentatio
 Without documentation, you have an agent that writes code. With documentation, you have an agent that writes code *that belongs* — and a system that ensures it keeps belonging, forever.
 
 The loops are the engine. The documentation is the fuel. Invest in both.
+
+---
+
+## The cascade: start at the top, flow down, finish before moving on
+
+There's a discipline that makes all of this work in practice: **architectural changes flow top-down and must complete before new work begins.**
+
+This sounds obvious but almost nobody does it. The natural instinct is: rename something, fix the three files you're looking at, open a PR, move on. The result: half the codebase uses the old name, half uses the new one. Six months later, nobody remembers which is "correct."
+
+The rule: **when you change something at the highest level (domain vocabulary, bounded context boundaries, naming conventions), that change must propagate all the way down to implementation before you pick up any new work.**
+
+### A real example: vocabulary standardization
+
+A project had inconsistent terminology for its escalation system. Different parts of the code used different words for the same concept:
+
+| Before (scattered) | After (standardized) |
+|--------------------|----------------------|
+| "block" / "halt" / "freeze" | "restrict" |
+| "warning" / "flag" / "notice" | "alert" |
+| "shutdown" / "unwind" / "close all" | "liquidate" |
+
+The fix wasn't one PR. It was a sequence:
+
+1. **First:** Update the domain taxonomy document. Define the official terms. Get human agreement.
+2. **Then:** Update every domain doc that references the old terms.
+3. **Then:** Update every implementation doc.
+4. **Then:** Update every module, function, variable, test, and comment in the codebase.
+5. **Then:** Update the issue templates and acceptance criteria language.
+6. **Only then:** Pick up new work.
+
+Each step was its own PR. The sequence was a cascade of small, focused changes — taxonomy first, then docs, then code, then tooling. No new features until the vocabulary was consistent everywhere.
+
+**Why this matters for agents:** An agent that encounters "block" in one file and "restrict" in another will use whichever it saw last. It can't determine which is correct without a canonical source. The taxonomy doc IS that source. But only if it's actually propagated — if the taxonomy says "restrict" but three modules still say "block," the agent will perpetuate the inconsistency.
+
+### The propagation order
+
+```
+Level 0: Conversation (agree on the change)
+    │
+    ▼
+Level 1: Domain docs (define the canonical truth)
+    │
+    ▼
+Level 2: Implementation docs (update the how-to guides)
+    │
+    ▼
+Level 3: Code (modules, types, functions, tests)
+    │
+    ▼
+Level 4: Tooling (issue templates, CI checks, review prompts)
+    │
+    ▼
+Level 5: New work begins (everything is consistent)
+```
+
+Skipping a level — or starting new work before reaching Level 5 — creates drift. Drift is silent. It compounds. Six months of drift means you've lost vocabulary consistency and you can't trust grep to find all usages of a concept.
+
+### Another example: architectural convention changes
+
+A project decided that all telemetry emission should go through dedicated submodules rather than inline calls. The change was:
+
+1. **Document the convention:** "Every context that emits telemetry gets a `Context.Telemetry` submodule. No inline `:telemetry.execute` calls." Written into the implementation docs.
+2. **Create the pattern:** Build one reference implementation showing the correct structure.
+3. **File issues for every module that violates the convention.** Not "we'll get to it" — actual tracked issues, each with clear acceptance criteria.
+4. **Implement them in sequence.** One PR per module migration. Each one is small, reviewable, and independently correct.
+5. **Only when all modules match:** The convention is real. Until then, it's aspirational.
+
+The temptation is to document the convention, migrate two modules, then start a new feature that "follows the new convention." But now you have three styles in the codebase: old modules with inline calls, migrated modules with submodules, and a new module following the convention. An agent reviewing code sees all three and can't determine which is authoritative.
+
+**Finish the migration. Then move on.**
+
+### The stability test
+
+A useful heuristic for what belongs in domain docs vs implementation docs:
+
+> "Would this fact survive a complete rewrite of the internals?"
+
+- "An order must reference a valid instrument" → Yes → domain doc
+- "Orders are stored in an ETS table keyed by instrument ID" → No → implementation doc
+- "Escalation levels are: alert → restrict → liquidate" → Yes → domain doc
+- "The escalation GenServer uses a state machine with three states" → No → implementation doc
+
+This test prevents implementation details from leaking into domain docs. Domain docs are the *stable foundation* that everything else is built on. If they contain implementation details, they rot every time the implementation changes.
+
+### Why "finish before moving on" matters for autonomous agents
+
+Humans can hold context across partially-completed migrations. They remember "oh right, we're in the middle of renaming 'block' to 'restrict', so this old reference is stale." Agents can't. Each session starts fresh.
+
+If the migration is incomplete:
+- The agent sees conflicting conventions and can't determine which is current
+- Code review becomes ambiguous ("is this a bug or just not-yet-migrated?")
+- New code picks up the wrong convention 50% of the time
+- The triage gate can't determine if an issue is clear enough to implement (which vocabulary should it use?)
+
+If the migration IS complete:
+- Every file uses the same terms
+- The canonical source matches reality
+- The agent can't accidentally use the old convention because it doesn't exist anywhere
+- Reviews are unambiguous ("this doesn't match the documented convention" is checkable)
+
+**Partial migrations are worse than no migration.** A codebase that consistently uses the wrong name is better than one that uses two names for the same thing. At least with one name, grep works.
+
+### The discipline
+
+1. **Never start an architectural change you can't finish this cycle.** If it's too big, break it into smaller changes that are each independently completable.
+2. **Domain docs change first.** Always. They're the source of truth. Everything flows from them.
+3. **Propagate immediately.** Don't document a rename and "get to the code later." The moment the domain doc merges, the code is wrong. Fix it now.
+4. **Block new work until propagation is complete.** This feels expensive. It's cheaper than six months of vocabulary drift.
+5. **Grep is your friend.** After the final propagation PR merges, grep the entire repo for the old term. If it appears anywhere — comments, tests, variable names, docs — you're not done.
