@@ -215,6 +215,17 @@ It's not about being smart on any individual step. It's about being relentless a
 
 ---
 
+## Prompts
+
+Copy-pasteable prompts you can give to any AI agent. These are the starting points for setup and documentation work.
+
+| Prompt | Purpose |
+|--------|----------|
+| [Setup](prompts/setup.md) | 5-phase guided setup with quality gates — walks you from zero to running system |
+| [Building Docs](prompts/building-docs.md) | Construction + validation prompts for every documentation type (glossary, conventions, patterns, implementation, designs) |
+
+---
+
 ## Examples
 
 These are the actual prompts that drive each loop. They're specific to [OpenClaw](https://openclaw.ai) but the patterns work with any runtime that can schedule AI tasks with tool access.
