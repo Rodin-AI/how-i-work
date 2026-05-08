@@ -117,7 +117,12 @@ repos:
       ready: ready
     ci_checks:
       - ci
+
+# How workers resolve tokens:
+credentials_dir: ~/.agent/credentials  # cat $credentials_dir/<token-name>
 ```
+
+The `credentials_dir` field tells workers where to find secrets. Each `tokens.read` / `tokens.write` value is a filename within that directory. No guessing, no env var hunting, no scattered secrets.
 
 ---
 
@@ -283,9 +288,40 @@ At each step, the system still works for the original repo. You're adding capabi
 
 ## What to watch for
 
-**Token sprawl.** Each repo × each forge × each operation = potentially many tokens. Organize them consistently (e.g., `credentials/gitea-write`, `credentials/github-pat`, `credentials/ghe-token`).
+**Token sprawl.** Each repo × each forge × each operation = potentially many tokens. The config references token names (`gitea-write`, `github-pat`), but workers need to know *how to resolve them*. Define a consistent convention:
 
-**Node contention.** If two repos target the same node, workers can collide (disk space, port conflicts, test databases). Either ensure test isolation or add a per-node concurrency limit.
+```yaml
+# Option A: file-based (recommended)
+# All tokens live in a known directory. Workers resolve by:
+#   cat $CREDENTIALS_DIR/<token-name>
+credentials_dir: ~/.agent/credentials
+
+# Option B: environment variables
+# Workers resolve by:
+#   $GITEA_WRITE_TOKEN, $GITHUB_PAT, etc.
+credentials_source: env
+credentials_prefix: AGENT_  # → AGENT_GITEA_WRITE, AGENT_GITHUB_PAT
+```
+
+Pick one. Document it in the config. Never leave workers guessing where secrets live — that's how you get a dispatcher that references `ghe-token` and a worker that can't find it.
+
+**Node contention.** If two repos target the same node, workers can collide (disk space, port conflicts, test databases). This causes weird intermittent failures that are hard to debug later.
+
+Solve this early, not later:
+
+```yaml
+nodes:
+  build-server:
+    max_concurrent_workers: 1   # serialize work on this node
+    test_isolation: docker       # or: unique-db-per-run, tmpdir
+  cloud-dev:
+    max_concurrent_workers: 2
+    test_isolation: unique-db-per-run
+```
+
+If `max_concurrent_workers: 1`, the dispatcher won't spawn a second worker targeting that node while one is already running. If you can't enforce isolation at the node level, at least ensure each worker uses a unique working directory (worktrees help here — `worktrees/pr-<N>` never collides with `worktrees/pr-<M>`).
+
+Test databases specifically: either use a unique DB name per worker (`gargoyle_test_<PID>`), run tests in Docker with ephemeral containers, or serialize. Don't discover this problem at 2am when two workers stomp each other's test data.
 
 **Context budget.** The dispatcher prompt grows with each repo. Keep the repos config compact — the dispatcher only needs enough to assess state. Workers get the full context.
 
