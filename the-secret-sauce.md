@@ -100,6 +100,8 @@ The documentation investment isn't linear — it compounds:
 
 Without documentation, session 100 looks like session 1. The agent is still re-deriving the same decisions, still guessing at the same conventions, still producing inconsistent output. There's no compounding because there's nothing to compound on.
 
+**Across projects:** The compounding isn't limited to one repo. Pattern repos and reference docs amortize across *every* project. Build an error-handling pattern guide once — it improves code in every repo that references it. Document how the top open-source projects handle concurrency — that knowledge applies everywhere. Domain docs are per-project, but reference docs are per-ecosystem. That's why the [multi-repo architecture](scaling-multiple-repos.md) works: each new repo starts with the accumulated wisdom of every repo before it, not from scratch.
+
 ---
 
 ## What "documentation" actually means here
