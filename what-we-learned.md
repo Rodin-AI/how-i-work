@@ -1,139 +1,157 @@
 # What We Learned: Why Multi-Model Systems Work
 
-This system wasn't designed from theory. It was built through experimentation — running different models on the same tasks, measuring what each catches, and tracking what gets missed. This page documents the insights that shaped the architecture.
+This is an automated code review pipeline that uses multiple AI models in different roles — writing, self-reviewing, and twin-reviewing every PR. This page documents what we discovered through 50+ experiments about why it works and what makes it break.
+
+The full experiment data, methodology, and per-finding details are published in our [model-research repo](https://gitea.weiker.me/rodin/model-research).
 
 ---
 
-## The core discovery: different models see differently
+## How to read this
 
-We started with a simple hypothesis: run two independent reviewers on every PR and you'll catch more bugs. That turned out to be true, but the *why* was more interesting than expected.
+The summary table tells you what we found and what we did about it. The sections below explain the evidence.
 
-Given the same code, the same context, and the same instructions:
+| Finding | System design decision |
+|---------|----------------------|
+| Claude Sonnet catches structural issues; GPT-5 catches semantic issues | Twin review uses two different providers with specialized prompts |
+| Signal buried in noise gets missed regardless of model | Self-review gets only the diff, no dev conversation |
+| Same prompt to both reviewers = redundancy, not coverage | Each reviewer has a focused job description (NOT "review this PR") |
+| Architecture docs need reasoning about the world, not pattern matching | Design-touching PRs get a third reviewer focused on contradictions |
+| A fresh session catches what the author session can't | Self-review spawns a completely fresh session (context isolation) |
+| GPT-4.1 Mini + one precise question > GPT-5 + broad mandate | Triage uses cheap model with one question; expensive models for deep work |
 
-- **One model consistently catches structural issues** — broken references, missing imports, dead code, pattern violations, formatting problems
-- **Another consistently catches semantic issues** — logical contradictions, cross-component assumption breaks, race conditions, domain-specific risks
+---
 
-These aren't random differences. They're consistent across dozens of reviews. Each model gravitates toward what it's architecturally better at, even with identical prompts.
+## Different models see differently
 
-**What this means for the system:** Twin review isn't just "two sets of eyes." It's two fundamentally different analytical modes applied to the same code. One checks "does this follow the rules?" The other checks "does this actually make sense?"
+We ran Claude Sonnet and GPT-5 on the same PRs with the same prompt ("review this PR for correctness, idiomatic code, potential bugs, and design issues"). Across 50+ reviews:
+
+**Claude Sonnet consistently found:**
+- Broken cross-references between files
+- Missing type specifications on public functions
+- Pattern deviations from documented conventions
+- Dead code and unused imports
+
+**GPT-5 consistently found:**
+- Logic that contradicted what the PR title claimed to implement
+- Race conditions with specific interleaving sequences described
+- Cross-module assumption violations ("module A assumes X, but module B doesn't guarantee X")
+- Financial calculation edge cases that produce wrong values silently
+
+These aren't random — they're repeatable. Given the same PR, Sonnet gravitates toward form and GPT-5 gravitates toward meaning. Neither is "better." They cover different failure modes.
+
+**Real example:** On a PR adding a new order validation handler:
+- Sonnet found: missing `@spec` on 2 public functions, one unused alias, test file not following naming convention
+- GPT-5 found: the validation bypasses the position limit check when the order quantity is exactly equal to the remaining capacity (off-by-one in `>=` vs `>`)
+
+Both findings were legitimate. The off-by-one would have shipped without GPT-5. The missing specs would have shipped without Sonnet. Neither model found both.
 
 ---
 
 ## Signal-to-noise ratio matters more than model capability
 
-Early in our testing, we found something counterintuitive:
+We ran an experiment: 12 research hypotheses contained directional bias (words like "inevitably," "must," "requires" pushing toward predetermined conclusions).
 
-> A cheap, small model with one precise question outperformed an expensive, large model doing a broad review.
+**Condition A:** GPT-4.1 Mini given ONLY the 12 hypotheses + one question: "Do any lead toward a predetermined conclusion?"
+→ Found all 12 biased. Cost: ~$0.003.
 
-The small model was given just the relevant text and asked: "Do any of these lead toward a predetermined conclusion?" It found every issue.
+**Condition B:** Claude Sonnet and GPT-5 given the same hypotheses buried inside a full PR review (diff, file content, issue description, acceptance criteria, project conventions) and asked "review this PR."
+→ Both approved. Neither flagged the bias.
 
-The expensive models were given the same text buried inside a full PR review (diff, file content, issue description, acceptance criteria, project conventions) and asked "review this PR." They missed the same issues entirely.
+**Condition C (the reveal):** Same Sonnet and GPT-5 given ONLY the hypotheses (noise removed), asked the same broad "review quality, clarity, and issues" question.
+→ Both found all 12 biased.
 
-**We thought this meant small models were better at focused analysis.** We were wrong.
+**The insight isn't "small models are better."** It's that when the signal is buried in noise (a 50,000-token PR review context), even powerful models lose it. Isolate the signal, and any model finds it.
 
-When we re-ran the experiment giving all models ONLY the relevant text (removing the surrounding noise), every model — including the cheapest — caught every issue regardless of whether the question was narrow or broad.
+This directly shaped the system:
+- **Self-review** strips everything except the diff — no development conversation, no trade-off reasoning, no justifications. The diff IS the signal.
+- **Triage** asks one question ("is anything stuck?") against a clean state summary — not "review the repo"
+- **Post-merge audit** compares exactly two things: the issue's acceptance criteria vs the merged code. Nothing else.
 
-**The real finding:** It's not about model size or question precision. It's about **signal-to-noise ratio**. When the thing you're looking for is buried in layers of other context, models lose it. When it's isolated, any model finds it.
-
-**What this means for the system:**
-- Triage uses a cheap model because the question is simple: "Is anything stuck?" — low noise, clear signal
-- Dev uses an expensive model because implementation requires holding complex context
-- Self-review works because the reviewer gets ONLY the diff — not the conversation that produced it. The noise (justifications, trade-offs, reasoning) is gone
-- The post-merge audit isolates one question: "Did this PR deliver what the issue asked?" — focused comparison, not broad review
+Full experiment details: [Finding #2 and #8 in model-research](https://gitea.weiker.me/rodin/model-research)
 
 ---
 
 ## Specialization beats identical mandates
 
-We ran both twin reviewers with the same prompt: "Review this PR for correctness, idiomatic code, potential bugs, and design issues." They found overlapping things and missed the same categories.
+When both reviewers got "review this PR," they produced overlapping findings and missed entire categories. We split them:
 
-When we gave each model a focused mandate aligned with its strengths:
+**Claude Sonnet's actual prompt (structural focus):**
+```
+Your role is STRUCTURAL review — correctness of form, not meaning.
+Your Domain: pattern compliance, spec completeness, structural 
+correctness, formatting, test coverage.
+NOT Your Domain: race conditions, cross-component semantics,
+financial domain correctness.
+```
 
-**Reviewer 1 (structural focus):**
-- Pattern compliance: does the code match documented conventions?
-- Specification completeness: are all edge cases handled?
-- Cross-references: do imports, types, and interfaces align?
+**GPT-5's actual prompt (semantic focus):**
+```
+Your role is SEMANTIC review — correctness of meaning, not form.
+Your Domain: semantic correctness, cross-component interactions,
+race conditions, domain-specific risks, assumption identification.
+NOT Your Domain: missing specs, formatting, pattern compliance,
+broken references.
+```
 
-**Reviewer 2 (semantic focus):**
-- Does the implementation actually do what the PR claims?
-- Are there cross-component interaction risks?
-- Could concurrent execution produce surprising behavior?
+The "NOT Your Domain" section is critical. Without it, models default to broad review and duplicate each other's work. With explicit exclusions, they go deeper into their assigned domain because they're not spending attention budget on the other model's territory.
 
-The overlap dropped dramatically. Each reviewer found things the other couldn't — not because they were told to look for different things, but because focusing on one domain freed their attention for deeper analysis in that domain.
-
-**What this means for the system:** "Use two reviewers" isn't enough. The reviewers need different *jobs*, not just different models. Identical mandates produce redundancy, not coverage.
+**Result:** Overlap dropped. Unique findings per reviewer increased. Neither reviewer produces findings in the other's domain — the partition is clean.
 
 ---
 
 ## Architecture documents need different review than code
 
-Code review and architecture review are fundamentally different analytical tasks:
+We tested gap-finding on architecture documents (failure modes, recovery procedures, system design) across GPT-4.1 Mini, GPT-4.1, and GPT-5:
 
-| | Code review | Architecture review |
-|---|---|---|
-| Question | "Does this implementation follow patterns?" | "Does this design hold up under real-world conditions?" |
-| Analytical mode | Within-frame: "given these rules, does this comply?" | Cross-boundary: "what must be true about the world for this to work?" |
-| What gets missed | Subtle bugs, inconsistencies, drift from conventions | Hidden assumptions, failure modes, design tensions |
-| Best model trait | Pattern matching, structural consistency | Reasoning about interactions across boundaries |
+| Model | Time | Findings | Type of finding |
+|-------|------|----------|----------------|
+| GPT-4.1 Mini | 16s | 10 | Formulaic: "what could this mechanism fail at?" |
+| GPT-4.1 | 24s | 15 | Thorough within-frame, some meta-observations |
+| GPT-5 | 45s | 14 | Cross-boundary: "what must the world guarantee for this to work?" |
 
-When we tested gap-finding on architecture documents:
+GPT-5 found fewer total items but qualitatively different ones. Its unique findings:
 
-- Non-reasoning models found risks **within the document's own frame** — "what could this mechanism fail at?"
-- Reasoning models found risks **the document can't see** — "what must be true about the world for this mechanism to work?"
+- "The reconciliation process assumes broker positions use trade-date semantics — but the internal ledger uses settlement-date. These diverge over weekends."
+- "Queued messages during recovery grow unbounded at market open when all users reconnect simultaneously — the mailbox isn't bounded."
+- "The gate is marked 'ready' before worker warmup completes — a 200ms race window where the system accepts work it can't process."
+- "Rate-limiting responses (429) don't trigger the 'connection lost' detection — the system thinks it's connected but can't trade."
 
-The difference isn't quantity. It's a qualitatively different kind of analysis. Reasoning models identify multi-component interactions, semantic mismatches between systems, and second-order effects that require thinking about things the document doesn't mention.
+GPT-4.1 and Mini found risks the document itself describes. GPT-5 found risks that require reasoning about the relationship between the system and things it connects to (brokers, clocks, network topology, concurrent users).
 
-**Example findings only reasoning models produced:**
-- "The reconciliation process assumes broker positions use the same date semantics as internal positions — but brokers often report trade-date while internal state uses settlement-date"
-- "Queued messages during recovery will grow unbounded at market open when all users reconnect simultaneously"
-- "The gate marked 'ready' before warmup completes — a race window where the system accepts work it can't process"
+**Reasoning tokens produce a different analytical mode** — not just "more of the same" but thinking about what ISN'T stated. For architecture docs where missing an assumption means months of wrong implementation, this justifies the cost.
 
-These aren't things you'd find by checking code against patterns. They require reasoning about the *relationship between the system and its environment*.
-
-**What this means for the system:** Post-merge audit and self-review can use different analytical depths depending on what changed. Code-only PRs get pattern-focused review. PRs touching architecture or domain boundaries get reasoning-focused review.
+Full data: [Findings #9, #10, #11 in model-research](https://gitea.weiker.me/rodin/model-research)
 
 ---
 
 ## Context isolation removes rationalization
 
-The most surprising finding wasn't about models at all — it was about context.
+The most surprising finding: **the same model in a fresh session catches things it missed when it wrote the code.**
 
-The session that writes code has already justified every decision. It "knows" why it left out that error handler (it decided it wasn't needed), why it chose that pattern (it reasoned through alternatives), why it didn't test that edge case (it determined it was unlikely).
+This isn't about different capabilities. The development session has justified every decision in its context window. It "decided" not to add that error handler. It "reasoned through" alternatives and picked this pattern. Those justifications are in-context and act as rationalization — the model won't question what it already defended.
 
-A fresh session has none of this. It sees the diff and asks: "Why isn't this handled?" It doesn't have the built-in answer. The rationalization is gone.
+A fresh session sees only the diff. No justifications. No trade-off reasoning. No "I already decided this is fine." It asks "why isn't this handled?" because it genuinely doesn't know the answer.
 
-**This is why self-review works even with the same model.** The model didn't change. The context did. Without the development conversation's justifications, the same model applies its full analytical capability without bias toward the existing implementation.
+**Combined with a different model**, you get the intersection:
+- Context isolation removes rationalizations (the model can't dismiss what it never justified)
+- Different model brings different pattern recognition (different architectural strengths)
 
-Combined with a different model (which brings genuinely different pattern recognition), you get the intersection: no rationalization AND different strengths. Either alone helps. Both together is where the system catches things that would otherwise ship.
-
----
-
-## What these findings shaped
-
-These aren't academic observations. They directly shaped the system architecture:
-
-| Finding | System design decision |
-|---------|----------------------|
-| Models see differently | Twin review uses two different providers |
-| Signal-to-noise ratio | Self-review gets only the diff, no dev conversation |
-| Specialization > identical mandates | Each reviewer has a focused job description |
-| Architecture needs reasoning | Post-merge audit uses deeper analysis on design changes |
-| Context isolation removes rationalization | Self-review spawns a completely fresh session |
-| Cheap + focused > expensive + broad | Triage uses cheap model with one question |
+Either alone helps. Both together is where PRs get caught that would otherwise ship.
 
 ---
 
 ## Open questions we're still investigating
 
-- **Does model placement matter?** (Model A investigates → Model B judges, vs. reversed.) We're A/B testing this with alternating PR assignments.
-- **How often should review prompts evolve?** The lookback loop finds noise, but changing prompts too often prevents measuring improvement. Current answer: human-approved changes only, batched every 3 days.
-- **Can the system bootstrap its own reference docs?** Models can extract patterns from source code, but a human must validate that extracted patterns are universal, not project-specific historical accidents.
-- **What's the ceiling?** At some point, the reviews will find nothing because the code quality is genuinely high. Is that the goal, or does it mean the system has become blind to a new category of issue?
+- **Does model placement matter?** (Model A investigates → Model B judges, vs. reversed.) We're A/B testing with alternating PR assignments.
+- **How often should review prompts evolve?** The lookback loop finds noise, but changing prompts too often prevents measuring improvement. Current answer: human-approved changes only, every 3 days.
+- **Can the system bootstrap its own reference docs?** Models can extract patterns from source code, but a human must validate that extracted patterns are universal vs project-specific accidents.
+- **What's the ceiling?** When reviews consistently find nothing, is that success or blindness? We don't know yet.
 
 ---
 
 ## Further reading
 
+- [Full experiment data and methodology](https://gitea.weiker.me/rodin/model-research) — 50+ experiments with raw results, prompts, and per-model comparisons
 - [The Secret Sauce](the-secret-sauce.md) — How documentation makes the review system meaningful (reviews need something to check against)
 - [Building Reference Docs](building-reference-docs.md) — How to create the ground truth that reviews verify against
 - [Adoption Guide](adoption-guide.md) — How to set up the twin review system with specialized mandates
