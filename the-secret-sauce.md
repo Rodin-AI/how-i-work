@@ -296,16 +296,6 @@ Once you've extracted Go patterns from kubernetes, those patterns apply to every
 
 ---
 
-## Summary
-
-The secret sauce isn't the loops. It's what the loops operate on.
-
-Conversations produce understanding. Understanding gets documented. Documentation creates the constraints that make autonomous work possible. Clear constraints make reviews checkable, audits meaningful, and the quality ratchet functional.
-
-Without documentation, you have an agent that writes code. With documentation, you have an agent that writes code *that belongs* — and a system that ensures it keeps belonging, forever.
-
-The loops are the engine. The documentation is the fuel. Invest in both.
-
 ---
 
 ## The cascade: start at the top, flow down, finish before moving on
@@ -500,3 +490,13 @@ The investment isn't "human writes all reference docs." It's "human directs and 
 The key constraint: the human must still validate. An agent extracting patterns from Kubernetes will find real patterns — but it might also find historical accidents, deprecated approaches, or conventions specific to that project's unique context. The human's job is to decide what's universal vs what's project-specific.
 
 ---
+
+## The short version
+
+The secret sauce isn't the loops. It's what the loops operate on.
+
+Conversations produce understanding. Understanding gets documented. Documentation creates the constraints that make autonomous work possible. Clear constraints make reviews checkable, audits meaningful, and the quality ratchet functional.
+
+Without documentation, you have an agent that writes code. With documentation, you have an agent that writes code *that belongs* — and a system that ensures it keeps belonging, forever.
+
+The loops are the engine. The documentation is the fuel. Invest in both.
