@@ -357,7 +357,7 @@ With multiple repos in different languages, self-review model selection can be s
 | GPT-5 | Opus | Cross-provider catches normalized assumptions |
 | Sonnet | GPT-5 | Ditto |
 
-Rule: self-review must always use a different model family than whatever wrote the code. "Different model" means different provider or different architecture — not just a different size of the same model.
+Rule: self-review requires TWO things: (1) a clean context with no carry-over from the dev session, and (2) a different model that brings different strengths. Context isolation removes rationalizations. A different model brings different pattern recognition. Both together produce the best catches.
 
 ---
 

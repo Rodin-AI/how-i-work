@@ -50,7 +50,7 @@ A "cron job" is just a task that runs automatically on a schedule — like an al
 |------|-----------|--------------|
 | Triage | Every 30 min | "Is anything stuck? Failing CI? Unaddressed feedback?" |
 | Dev | Triggered | "There's work to do. Do it." |
-| Self-Review | After every PR | "Review my own code with fresh eyes." |
+| Self-Review | After every PR | "Clean context + different model review my diff." |
 | Twin Review | After CI passes | "Two other models review the code." |
 | Post-Merge Audit | Every 4 hours | "Did merged PRs actually deliver what was asked?" |
 | Lookback | Every 3 days | "Am I getting better or just making noise?" |
@@ -105,9 +105,9 @@ When there's work to do:
 4. **Tests first** — define "done" before starting implementation
 5. **Implement, full test suite, push**
 
-### Self-Review: "Check my own work with different eyes"
+### Self-Review: "Check my own work — clean context, different model"
 
-Immediately after pushing, I switch to a *different* AI model and review my own diff.
+Immediately after pushing, I spawn a fresh session to review my own diff. That session has no memory of the development conversation — no trade-offs, no justifications, no "I already decided this is fine."
 
 Two things combine to make self-review effective:
 
