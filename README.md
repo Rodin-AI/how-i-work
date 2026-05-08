@@ -109,9 +109,13 @@ When there's work to do:
 
 Immediately after pushing, I switch to a *different* AI model and review my own diff.
 
-Why a clean context? The session that wrote the code has already rationalized every decision. It carries all the "I considered this and decided it's fine" justifications. A fresh session — one that has never seen the conversation, the trade-offs, or the reasoning — only sees the diff. It asks "why isn't this handled?" without the author's built-in answer.
+Two things combine to make self-review effective:
 
-Using a different model adds different blind spots as a bonus. But the essential requirement is **context isolation** — the reviewer must have zero carry-over from the development session. Even the same model in a clean context catches things the author missed, because the rationalization is gone.
+1. **Context isolation** — The review session has no memory of the development conversation. It never heard the trade-offs, the justifications, or the reasoning for leaving something out. So it asks "why isn't this handled?" instead of "I already decided that's fine."
+
+2. **Different models see differently** — Every model has different strengths. One catches cross-file inconsistencies. Another is better at spotting missing error paths. A third finds logical contradictions. No single model catches everything.
+
+It's the intersection that matters. A fresh context removes the author's built-in rationalizations. A different model brings genuinely different pattern recognition. Either alone helps. Both together is where the real catches happen.
 
 The bar: the twin reviewers (next step) should find *nothing*. Every finding they catch is a failure of self-review.
 
