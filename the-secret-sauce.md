@@ -170,15 +170,17 @@ Then turn on the loops. They'll work because they have something to work against
 
 In practice, the time split looks roughly like:
 
-| Activity | Time | Leverage |
-|----------|------|----------|
-| Conversation + thinking | 30% | Highest — shapes everything downstream |
-| Documentation | 25% | High — amortizes across all future work |
-| Issue creation | 10% | Medium — precision here prevents waste later |
-| Implementation | 20% | Medium — this is where agents shine |
-| Review + audit | 15% | High — closes the loop |
+| Activity | Human time | Bot time | Leverage |
+|----------|-----------|----------|----------|
+| Conversation + thinking | 50% | 5% | Highest — shapes everything downstream |
+| Documentation | 15% | 20% | High — amortizes across all future work |
+| Issue creation | 5% | 10% | Medium — precision here prevents waste later |
+| Implementation | 0% | 40% | Medium — this is where agents shine |
+| Review + audit | 30% | 25% | High — closes the loop |
 
-Read that again: **conversation and documentation together take more time than implementation.** That's not a failure of efficiency — it's the whole point. The thinking IS the work. The code is just the artifact that falls out of clear thinking.
+The human barely touches code. Their job is thinking, deciding, and reviewing. The bot barely thinks about the domain. Its job is executing, drafting, and checking.
+
+Read that split carefully: **the human spends 65% of their time on conversation, thinking, and documentation.** The bot spends 65% of its time on implementation and reviews. They're doing fundamentally different work — and that's the point. The human provides understanding; the bot provides throughput.
 
 Most teams spend 80% on implementation and 5% on documentation. Then they wonder why automation doesn't help much. The automation amplifies whatever understanding exists. If the understanding is shallow, the automation produces shallow work at scale.
 
