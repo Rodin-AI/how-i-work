@@ -210,6 +210,127 @@ One message. Everything at a glance. No need to check N different places.
 
 ---
 
+## Issue tracker integration
+
+Not every repo uses GitHub Issues. Many teams (especially enterprise) use Jira, Linear, or other external trackers. The system needs to handle this cleanly.
+
+### Repos config: issue tracker field
+
+```yaml
+repos:
+  - name: billing-service
+    # ... forge, node, language, etc.
+    issues:
+      type: gitea             # issues live in the forge itself
+      # no extra config needed
+
+  - name: api-gateway
+    issues:
+      type: github
+      # no extra config needed
+
+  - name: infra-tools
+    issues:
+      type: jira
+      url: https://jira.corp.example.com
+      project: INFRA           # Jira project key
+      token: jira-pat          # resolved via credentials_dir
+      workflow:                # maps Jira statuses to loop states
+        todo: "To Do"
+        in_progress: "In Progress"
+        review: "In Review"
+        done: "Done"
+```
+
+### How Jira fits into each loop
+
+**Triage:**
+```
+# GitHub/Gitea: scan open issues assigned to agent
+GET /repos/:org/:repo/issues?assignee=agent&state=open
+
+# Jira: JQL query
+GET /rest/api/2/search?jql=project=INFRA AND assignee=currentUser() AND status="To Do"
+```
+
+The dispatcher normalizes both into the same shape: `{id, title, status, priority}`. It doesn't care where they came from.
+
+**Dev loop (new implementation):**
+When the dispatcher picks a Jira issue to implement:
+- Read the Jira ticket (summary, description, acceptance criteria, subtasks)
+- Transition to "In Progress" when work starts
+- Worker's PR description links back: `Closes INFRA-123` or `Refs INFRA-123`
+- Transition to "In Review" when PR is opened
+
+**Post-merge review:**
+This is where Jira integration matters most. The auditor needs to:
+1. Find the linked Jira issue from the PR (parse `PROJ-123` from branch name, commit messages, or PR body)
+2. Pull acceptance criteria from the Jira ticket (description, subtasks, custom fields)
+3. Compare: did the merged code deliver each criterion?
+4. If gaps: create a new Jira issue (type=Bug, links to original) or comment on the original
+
+```
+# Find linked issue from PR
+branch: fix/INFRA-123-retry-logic  →  INFRA-123
+commit: "fix(INFRA-123): add retry"  →  INFRA-123
+PR body: "Closes INFRA-123"  →  INFRA-123
+
+# Pull acceptance criteria
+GET /rest/api/2/issue/INFRA-123?fields=description,subtasks,customfield_10100
+
+# File gap issue
+POST /rest/api/2/issue
+{
+  "fields": {
+    "project": {"key": "INFRA"},
+    "issuetype": {"name": "Bug"},
+    "summary": "Gap: INFRA-123 missing retry on 503",
+    "description": "Post-merge audit found...",
+    "issuelinks": [{"type": "Relates", "inwardIssue": {"key": "INFRA-123"}}]
+  }
+}
+```
+
+**Handoff:**
+When a PR is ready for human review, optionally transition the Jira issue to "In Review" and add a comment with the PR link. The human sees the PR in their code forge AND the ticket moves in their Jira board.
+
+### Linking conventions
+
+Pick one pattern and enforce it:
+
+| Convention | Example | Detection regex |
+|------------|---------|----------------|
+| Branch prefix | `fix/INFRA-123-description` | `(?:fix\|feat\|chore)/([A-Z]+-\d+)` |
+| Commit prefix | `fix(INFRA-123): description` | `\(([A-Z]+-\d+)\)` |
+| PR body | `Closes INFRA-123` | `(?:Closes\|Refs\|Fixes)\s+([A-Z]+-\d+)` |
+
+The dispatcher should try all three in order. If none match, the PR is orphaned (no linked issue) — flag this in triage as a process problem.
+
+### What Jira gives you that forge issues don't
+
+- **Custom fields:** acceptance criteria, story points, sprint membership
+- **Workflow transitions:** automatic status updates as work progresses
+- **Cross-project visibility:** a single board showing work across repos
+- **Approval flows:** some teams require Jira approval before merge
+
+### What Jira complicates
+
+- **Two sources of truth:** issue is in Jira, code is in GitHub. They can drift.
+- **API authentication:** Jira Cloud uses OAuth or API tokens. Jira Server uses PATs or basic auth. Different endpoints.
+- **Rate limits:** Jira Cloud has aggressive rate limiting. Batch your queries.
+- **Status sync:** if the agent transitions issues automatically, make sure it matches the team's workflow. Don't move a ticket to "Done" just because a PR merged — some teams need QA sign-off first.
+
+### Minimal Jira integration (start here)
+
+If full bidirectional sync feels heavy, start with:
+1. **Read-only triage:** query Jira for assigned issues, include them in priority ranking
+2. **Link detection:** parse PR branches/commits for ticket IDs, include in triage report
+3. **Post-merge audit:** pull acceptance criteria from Jira, compare to merged diff
+
+Add write operations (transitions, comments, new issues) only after read-only is working reliably.
+
+---
+
 ## Forge abstraction
 
 Different forges have different APIs:
@@ -321,7 +442,7 @@ nodes:
 
 If `max_concurrent_workers: 1`, the dispatcher won't spawn a second worker targeting that node while one is already running. If you can't enforce isolation at the node level, at least ensure each worker uses a unique working directory (worktrees help here — `worktrees/pr-<N>` never collides with `worktrees/pr-<M>`).
 
-Test databases specifically: either use a unique DB name per worker (`gargoyle_test_<PID>`), run tests in Docker with ephemeral containers, or serialize. Don't discover this problem at 2am when two workers stomp each other's test data.
+Test databases specifically: either use a unique DB name per worker (`myapp_test_<PID>`), run tests in Docker with ephemeral containers, or serialize. Don't discover this problem at 2am when two workers stomp each other's test data.
 
 **Context budget.** The dispatcher prompt grows with each repo. Keep the repos config compact — the dispatcher only needs enough to assess state. Workers get the full context.
 
