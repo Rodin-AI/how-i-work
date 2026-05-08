@@ -2,22 +2,27 @@
 
 This is the work that makes everything else possible. Without reference docs, an agent writes code that works. With reference docs, an agent writes code that *belongs*.
 
-This page covers how to build each type of documentation from scratch, and — critically — how to keep it alive as the codebase evolves.
+This page is split into three parts:
+1. **What to build** — the types of documentation, where they live, and how they relate
+2. **How to write each one** — concrete process, examples, and common mistakes
+3. **How to keep them alive** — staleness detection, maintenance discipline, and who owns what
 
 ---
 
-## The types and what they're for
+# Part 1: What to Build
+
+## The six types of documentation
 
 | Type | Answers the question | Example |
 |------|---------------------|---------|
 | Domain glossary | "What IS this thing?" | "An Order is a request to buy or sell..." |
 | Conventions | "How do we do things HERE?" | "Errors are wrapped with context at every level..." |
-| Reference patterns | "Show me how to add a new X" | A complete command handler with tests |
+| Reference patterns | "Show me how to add a new X" | A complete API endpoint with tests |
 | Ecosystem patterns | "How does the ECOSYSTEM do this?" | Error handling patterns from kubernetes, etcd |
-| Implementation docs | "How does this subsystem work internally?" | "The order pipeline uses a GenStage flow..." |
+| Implementation docs | "How does this subsystem work internally?" | "The order pipeline uses a streaming flow..." |
 | Feature designs | "What did we decide and why?" | Design doc for the escalation system |
 
-Each type lives in a specific place:
+## Where each type lives
 
 | Type | Location | Scope |
 |------|----------|-------|
@@ -28,10 +33,24 @@ Each type lives in a specific place:
 | Implementation docs | `your-project/docs/impl/<topic>.md` | This project |
 | Feature designs | `your-project/docs/designs/<feature>.md` | This project |
 
+## How to decide where something belongs
+
 **The stability test:** "Would this fact survive a complete rewrite of the internals?"
-- Yes → domain docs
+
+- Yes → domain docs (glossary, reference patterns)
 - No → implementation docs
 - Maybe → conventions (the WHAT survives, the HOW might change)
+
+**Examples:**
+- "An order must reference a valid instrument" → Yes → domain doc
+- "Orders are stored in Postgres with a composite index on (account_id, instrument_id)" → No → implementation doc
+- "Errors are wrapped with context at every call site" → Maybe → conventions
+
+---
+
+# Part 2: How to Write Each One
+
+Each section below is one type of documentation. For each: what it is, the process to create it, a complete example, common mistakes, and how long it takes.
 
 ---
 
@@ -39,7 +58,7 @@ Each type lives in a specific place:
 
 **What it is:** A list of terms your system uses, with precise definitions. Not "what the word means in English" — what it means in YOUR system.
 
-**How to write it:**
+**Process:**
 
 1. Open a new file: `docs/domain/glossary.md`
 2. Go through your codebase and list every noun that appears in module names, database tables, API endpoints, or config keys
@@ -85,7 +104,7 @@ A Position can be long (positive quantity) or short (negative quantity).
 
 **What it is:** How code is written in THIS repo. Not aspirational rules — a description of the patterns that already exist, plus any explicit decisions about how new code should look.
 
-**How to write it:**
+**Process:**
 
 1. Open your 5 most recently merged PRs
 2. For each one, note: file naming, module structure, error handling patterns, test file locations, dependency injection approach
@@ -93,7 +112,7 @@ A Position can be long (positive quantity) or short (negative quantity).
 4. Write those patterns down as "this is how we do X"
 5. For anything inconsistent, make a decision NOW and write it down
 
-**Structure:**
+**Example:**
 
 ```markdown
 # Conventions
@@ -137,7 +156,7 @@ A Position can be long (positive quantity) or short (negative quantity).
 
 **What it is:** A documented example of the most common unit of work in your repo. When the agent needs to "add a new X", this is the blueprint.
 
-**How to write it:**
+**Process:**
 
 1. Pick the thing you add most often (endpoint, handler, worker, module, command)
 2. Find the BEST existing example in your codebase — the one you'd point a new teammate to
@@ -239,7 +258,9 @@ func (s *Service) CreateOrder(ctx context.Context, cmd CreateOrderCommand) (*Ord
 
 **What it is:** Curated knowledge about how your language/framework ecosystem does things — extracted from authoritative sources (major open-source projects, official guides, standard library source code). NOT your opinions about best practices. Reality, documented.
 
-**How to build one:**
+**How it differs from the types above:** Domain glossaries, conventions, and reference patterns are all per-project. Ecosystem pattern repos are **per-language** — they apply to every project you write in that language. Build them once, reference them everywhere.
+
+**Process:**
 
 1. **Pick 3-5 authoritative projects** in your ecosystem. For Go: kubernetes, etcd, cockroachdb. For TypeScript: next.js, prisma, trpc. For Rust: tokio, serde, axum.
 
@@ -309,13 +330,17 @@ propagate in the middle. Use `fmt.Errorf("context: %w", err)` everywhere.
 
 ---
 
-## Keeping documentation alive
+# Part 3: Keeping Documentation Alive
 
 Building docs is the easy part. The hard part is keeping them current as the codebase evolves. Stale docs are worse than no docs — they cause the agent to confidently write wrong code.
 
-### The staleness problem
+This section covers: how docs go stale, how to detect it, who fixes what, and how to make freshness sustainable.
 
-Documentation goes stale in predictable ways:
+---
+
+## How documentation goes stale
+
+It happens in predictable ways:
 
 | What rots | Why | How fast |
 |-----------|-----|----------|
@@ -325,7 +350,9 @@ Documentation goes stale in predictable ways:
 | Domain glossary | New concepts added without glossary entries | Slow (terms are stable) |
 | Ecosystem patterns | Upstream projects evolve | 6-12 months |
 
-### Automated staleness detection
+---
+
+## Detecting staleness
 
 The post-merge audit loop catches staleness naturally: if a merged PR contradicts what docs say, it files an issue. But you can also detect it proactively.
 
@@ -347,18 +374,22 @@ Output: list of potentially stale docs with evidence (file paths of contradictio
 - New modules that don't follow documented patterns → pattern evolved, doc didn't
 - Lookback finds: "agent kept doing X despite docs saying Y" → docs are being ignored (maybe wrong)
 
-### Who updates what
+---
+
+## Who updates what
 
 | Type | Who updates | When |
 |------|------------|------|
 | Domain glossary | Human (after conversations) | When new concepts emerge |
-| Conventions | Agent proposes, human approves | When patterns drift is detected |
+| Conventions | Agent proposes, human approves | When pattern drift is detected |
 | Reference patterns | Agent proposes, human approves | When a better example exists |
 | Ecosystem patterns | Scheduled refresh (quarterly) | When upstream releases major versions |
 | Implementation docs | Agent (after code changes) | Every PR that changes architecture |
 | Feature designs | Human (before implementation) | Before starting a feature |
 
-### The documentation PR pattern
+---
+
+## The documentation PR pattern
 
 When the agent detects stale docs, it shouldn't silently fix them. Documentation changes affect how ALL future code is written. They need human review.
 
@@ -371,7 +402,9 @@ The pattern:
 
 This keeps the human as the authority on "what should be true" while the agent handles the grunt work of finding contradictions and proposing updates.
 
-### Ecosystem pattern refresh
+---
+
+## Ecosystem pattern refresh
 
 Upstream projects evolve. The patterns you extracted 6 months ago might be outdated. Schedule a quarterly refresh:
 
@@ -392,7 +425,9 @@ Output: list of files needing updates, with evidence from current source
 
 This can be a scheduled task (monthly or quarterly) that runs cheaply — it's just reading code and comparing against docs.
 
-### The compound benefit of freshness
+---
+
+## Why freshness compounds
 
 Fresh docs don't just prevent errors — they accelerate everything:
 
@@ -408,7 +443,9 @@ Fresh docs create a flywheel: docs are right → agent writes correct code → r
 
 ---
 
-## Getting started: the 4-hour bootstrap
+# Getting Started
+
+## The 4-hour bootstrap
 
 If you're starting from zero, here's the minimum viable documentation investment:
 
