@@ -51,13 +51,15 @@ Ask: "Would this fact survive a complete rewrite of the internals?"
 
 ## Part 2: How to Write Each One
 
+Each section below covers one type: what it is, the process, pitfalls, and a link to a complete example. For each type, there's also a **copy-pasteable prompt** you can give to an agent to do the construction work: [Building docs prompts](prompts/building-docs.md).
+
 ### Domain glossary
 
 Every noun in your system — module names, database tables, API resources — gets a precise definition. Not what the word means in English. What it means in YOUR system, including relationships to other terms and any constraints.
 
 **Process:** Scan your codebase for nouns (struct names, table names, endpoint resources). For each one, write what it IS, what it relates to, and what constraints it has.
 
-→ **[See complete example](examples/domain-glossary.md)**
+→ **[See complete example](examples/domain-glossary.md)** · **[Construction prompt](prompts/building-docs.md#domain-glossary)**
 
 **Pitfalls:**
 - Too vague ("Order — something a user creates")
@@ -74,7 +76,7 @@ How code is written in THIS repo. Not aspirational rules — a description of th
 
 **Process:** Open recent PRs. Note file naming, error handling, test locations, dependency injection. Write down what repeats. Decide where things conflict.
 
-→ **[See complete example](examples/conventions.md)**
+→ **[See complete example](examples/conventions.md)** · **[Construction prompt](prompts/building-docs.md#conventions)**
 
 **Pitfalls:**
 - Describing what you WISH the code looked like (document reality, then fix reality)
@@ -91,7 +93,7 @@ A step-by-step blueprint for the most common unit of work in your repo. When the
 
 **Process:** Pick the thing you add most often. Find the best existing example. Document it: files to create, complete code, tests to write, and — critically — WHY it's structured this way.
 
-→ **[See complete example](examples/reference-pattern.md)**
+→ **[See complete example](examples/reference-pattern.md)** · **[Construction prompt](prompts/building-docs.md#reference-pattern)**
 
 **Pitfalls:**
 - Pseudocode instead of real, copy-pasteable code
@@ -110,7 +112,7 @@ Curated knowledge about how authoritative open-source projects solve common prob
 
 **Process:** Pick 3-5 authoritative projects (Go: kubernetes, etcd, cockroachdb. TypeScript: next.js, prisma, trpc). Pick a concern (error handling, testing, concurrency). Read their source code — not docs, source. Document what you find, including where they disagree.
 
-→ **[See complete example](examples/ecosystem-pattern.md)**
+→ **[See complete example](examples/ecosystem-pattern.md)** · **[Construction prompt](prompts/building-docs.md#ecosystem-patterns)**
 
 **Pitfalls:**
 - Documenting what you THINK the community does (verify against source)
