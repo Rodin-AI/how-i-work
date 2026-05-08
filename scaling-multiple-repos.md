@@ -465,11 +465,20 @@ The whole system routes through one cron job. If it fails — model timeout, rat
 - Health endpoint or heartbeat monitor that specifically checks "has the dispatcher fired successfully in the last 2× its interval?"
 - Consider a fallback: if the dispatcher hasn't run in 2 hours, a simpler per-repo check (just CI status) fires as a degraded backup.
 
+**Where state lives:** The dispatcher itself is stateless (cron job, fresh each run). Failure tracking must live outside it. Options:
+- A state file in the agent's workspace (e.g., `state/dispatcher-health.json`) that the *runtime* or a separate watchdog reads and increments on failure
+- The cron scheduler itself tracking consecutive errors (OpenClaw already does this — `consecutiveErrors` in job state)
+- An external health check (separate lightweight cron, or the human's monitoring stack) that queries "when did this job last succeed?"
+
+The simplest: rely on whatever your cron runtime already tracks. Most schedulers (OpenClaw, Hermes, Temporal) already record last-run status. The alert fires when `consecutive_failures >= N` in the scheduler's own state — no custom persistence needed.
+
 ```yaml
 health:
   dispatcher_max_consecutive_failures: 3
   alert_if_silent_for: 2h
   fallback: per_repo_ci_check   # degraded mode, not full dispatch
+  # State is tracked by the cron scheduler, not the dispatcher itself.
+  # Alert fires via the scheduler's built-in health monitoring.
 ```
 
 ### Stale handoff deadlock
