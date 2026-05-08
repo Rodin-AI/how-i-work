@@ -124,19 +124,40 @@ You don't need 100% coverage to start. But you need the **conventions** and **pr
 
 ### Using these prompts as a gap-finding tool
 
-These aren't just a one-time checklist. Run them periodically (monthly, or when triage flags increase):
+These aren't just a one-time checklist. Run them periodically (monthly, or when triage flags increase). Copy-paste this entire prompt to your agent:
 
 ```
-Gap-finding prompt (give this to your agent):
-
-"Read all documentation in this repo. Then answer the following
+Read all documentation in this repo. Then answer the following
 questions using ONLY what's documented. For each question, respond
 with one of:
   - ANSWERED: [your answer, citing the source file]
   - PARTIAL: [what you can answer + what's missing]
   - UNDOCUMENTED: [your best guess + why you're not confident]
 
-[paste questions from checklist above]"
+Domain understanding:
+1. What are the 10 most important concepts in this system and how do they relate?
+2. What's the difference between [concept A] and [concept B]? (pick two that are easy to confuse)
+3. What happens when [common operation] fails halfway through?
+4. Which parts of the system own which responsibilities?
+5. What invariants must ALWAYS hold, regardless of implementation?
+
+Conventions:
+6. Show me the correct way to add a new [most common unit of work].
+7. How does error handling work here? What gets rescued vs propagated vs logged?
+8. What's the testing strategy? Unit vs integration vs e2e boundaries?
+9. Where does validation live? Input boundary? Domain layer? Both?
+10. What naming conventions exist? (files, modules, functions, variables, DB tables)
+
+Architecture:
+11. Why is the system structured this way and not [obvious alternative]?
+12. What are the trust boundaries? What talks to what, and who validates at each boundary?
+13. If I need to add a feature that crosses two subsystems, what's the integration pattern?
+14. What's shared and what's private? Where are the fences?
+
+Process:
+15. What does "done" mean for a PR in this repo?
+16. What are the non-negotiable quality checks before merge?
+17. What's in scope for the agent vs what requires human decision?
 ```
 
 Every UNDOCUMENTED response is a conversation waiting to happen. Every PARTIAL is a doc that needs expansion. The agent identifying its own knowledge gaps is cheaper than discovering them mid-implementation when it guesses wrong.
