@@ -6,68 +6,17 @@ Give this entire file to your agent. Fill in the placeholders first.
 
 ## What this is
 
-An ecosystem pattern file documents how authoritative open-source projects
-solve a specific concern — extracted from their source code, not their docs.
-The result is a citable reference your agent checks before writing code.
+An ecosystem pattern file documents how authoritative open-source projects solve a specific concern — extracted from their source code, not their docs. The result is a citable reference your agent checks before writing code.
 
-**See a real example of the finished output:** [Rodin-AI/go-patterns](https://github.com/Rodin-AI/go-patterns) — patterns from the Go standard library, kubernetes, and prometheus with file:line citations.
-
-Repo structure:
-```
-go-patterns/
-├── patterns/       # extracted patterns with file:line citations
-├── smells/         # anti-patterns to avoid (also cited)
-└── sources/        # raw analysis notes per project
-```
-Each pattern file follows: Sources analyzed → The pattern → Where they disagree → Anti-patterns → Recommendation.
+**Real example:** [Rodin-AI/go-patterns](https://github.com/Rodin-AI/go-patterns) — clone it, read it, make yours look like that.
 
 ---
 
 ## Placeholders to fill
 
 - `<CONCERN>`: the topic (e.g., error handling, testing, concurrency, interfaces)
-- `<LANGUAGE>`: the language (e.g., Go, TypeScript, Rust, Elixir)
-- `<PROJECT 1/2/3>`: authoritative projects (see suggestions below)
-
-### Suggested source projects by language
-
-**Go:**
-| Concern | Best sources |
-|---------|-------------|
-| Error handling | kubernetes/kubernetes, etcd-io/etcd, cockroachdb/cockroach |
-| Concurrency | golang/go (stdlib), hashicorp/consul, nats-io/nats-server |
-| Testing | golang/go (stdlib tests), prometheus/prometheus, vitessio/vitess |
-| Interfaces | kubernetes/kubernetes, hashicorp/terraform, docker/moby |
-| HTTP/API design | kubernetes/kubernetes, go-chi/chi, labstack/echo |
-| Configuration | hashicorp/consul, spf13/viper, nats-io/nats-server |
-
-**TypeScript:**
-| Concern | Best sources |
-|---------|-------------|
-| Error handling | prisma/prisma, trpc/trpc, vercel/next.js |
-| Testing | vitest-dev/vitest, playwright-community, jestjs/jest |
-| Type patterns | trpc/trpc, prisma/prisma, tRPC/trpc |
-| Module structure | vercel/next.js, remix-run/remix, angular/angular |
-| State management | pmndrs/zustand, reduxjs/redux-toolkit, TanStack/query |
-| Validation | colinhacks/zod, fakerjs/faker, Effect-TS/effect |
-
-**Rust:**
-| Concern | Best sources |
-|---------|-------------|
-| Error handling | rust-lang/rust (stdlib), dtolnay/anyhow, BurntSushi/ripgrep |
-| Concurrency | tokio-rs/tokio, rayon-rs/rayon, crossbeam-rs/crossbeam |
-| Testing | rust-lang/rust, tokio-rs/tokio, serde-rs/serde |
-| Traits/generics | serde-rs/serde, rust-lang/rust (stdlib), tower-rs/tower |
-| CLI patterns | clap-rs/clap, BurntSushi/ripgrep, sharkdp/fd |
-
-**Elixir:**
-| Concern | Best sources |
-|---------|-------------|
-| GenServer | elixir-lang/elixir, phoenixframework/phoenix, dashbitco/broadway |
-| Error handling | elixir-lang/elixir, phoenixframework/phoenix, oban-bg/oban |
-| Testing | elixir-lang/elixir, phoenixframework/phoenix, ecto (sandbox) |
-| Supervision | elixir-lang/elixir (stdlib), nerves-project/nerves, membrane |
-| Ecto patterns | elixir-ecto/ecto, phoenixframework/phoenix, ash-project/ash |
+- `<LANGUAGE>`: the language
+- `<PROJECT 1/2/3>`: 3 authoritative open-source projects in that language (large, mature, many contributors — pick ones you'd trust to get it right)
 
 ---
 
@@ -87,51 +36,39 @@ For each source project:
 2. Extract the pattern: what do they consistently do?
 3. Note the exact version/commit you analyzed
 
-Then synthesize:
-1. "The pattern" — what ALL sources agree on (with code examples from source)
-2. "Where they disagree" — different approaches with context on why
-3. "Anti-patterns" — what they explicitly avoid (with evidence)
-4. "Recommendation for our repos" — which approach to follow and why
-
-Output format: <concern>.md in the patterns repo.
-Structure:
-  ## Sources analyzed (with versions)
-  ## The pattern (with cited examples)
-  ## Where they disagree
-  ## Anti-patterns (what to avoid)
-  ## Recommendation
+Then synthesize into a single file with these sections:
+1. "Sources analyzed" — project names + exact versions/commits
+2. "The pattern" — what ALL sources agree on (with code from source)
+3. "Where they disagree" — different approaches with context on why
+4. "Anti-patterns" — what they explicitly avoid (with evidence)
+5. "Recommendation" — which approach to follow and why
 
 RULE: every claim must cite a specific file in a specific project.
-"Projects generally do X" is not acceptable — "kubernetes/pkg/controller/foo.go
-does X" is. If you can't cite it, don't claim it.
+"Projects generally do X" is not acceptable — show the file path.
+
+Use https://github.com/Rodin-AI/go-patterns as a structural reference
+for what the output should look like.
 ```
 
 ---
 
 ## Step 2: Validate
 
-After building the pattern file, run this validation. This CAN use
-source code access — the point is to verify claims are real.
-
 ```
 For each claim in the pattern file:
 
-1. Go to the cited file in the cited project at the cited version.
-2. Confirm the code actually does what the doc says it does.
-3. Check: has this file changed significantly since the cited version?
-   (Look at current main branch — does the pattern still hold?)
+1. Go to the cited file at the cited version
+2. Confirm the code does what the doc says
+3. Check if the file has changed significantly on current main
 
 Scoring:
-- Claim matches source code: VERIFIED
-- Claim is outdated (source changed since): STALE — note current behavior
-- Claim doesn't match source (was wrong): WRONG — remove or correct
-- Claim has no citation: UNVERIFIABLE — add citation or delete
+- Matches source: VERIFIED
+- Source changed since: STALE — note current behavior
+- Doesn't match (was wrong): WRONG — correct or remove
+- No citation: UNVERIFIABLE — add citation or delete
 
-Also test the recommendation:
-- Write a small piece of code following the "Recommendation" section.
-- Does it feel natural in the language? Would it pass review on any of
-  the source projects? If it would look out of place in kubernetes or
-  etcd, the recommendation might be aspirational rather than grounded.
+Then test the recommendation: write code following it. Does it look
+natural? Would it pass review on the source projects?
 ```
 
 ---
@@ -139,8 +76,6 @@ Also test the recommendation:
 ## Done when
 
 - [ ] Every claim cites a specific file and version
-- [ ] All citations verified against actual source code
+- [ ] All citations verified against source
 - [ ] Zero WRONG claims remain
-- [ ] Anti-patterns section has at least one cited example
 - [ ] Recommendation produces natural-looking code
-- [ ] "Where they disagree" section covers at least one real divergence
