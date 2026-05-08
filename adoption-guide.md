@@ -6,6 +6,69 @@ Before you configure loops, read [The Secret Sauce](the-secret-sauce.md). The lo
 
 ---
 
+## Before you start: what you need and what it costs
+
+If you're new to AI-assisted development, here's what the pieces are and how to get them.
+
+### What is an AI model?
+
+An AI model (like GPT-5 or Claude) is a service you call over the internet. You send it text ("review this code"), it sends back text ("here are three issues I found"). You access it through an API — which means you need an account with the provider and an API key (a password-like string that identifies you).
+
+The major providers:
+
+| Provider | Models | Sign up | Pricing |
+|----------|--------|---------|--------|
+| [OpenAI](https://platform.openai.com) | GPT-4.1, GPT-5 | platform.openai.com | ~$2–15 per million tokens* |
+| [Anthropic](https://console.anthropic.com) | Claude Sonnet, Claude Opus | console.anthropic.com | ~$3–15 per million tokens* |
+| [Google](https://ai.google.dev) | Gemini Pro, Gemini Ultra | ai.google.dev | ~$1–10 per million tokens* |
+
+*A "token" is roughly 3/4 of a word. A typical code review of a 200-line PR uses ~10,000–50,000 tokens. At $10/million tokens, that's $0.10–$0.50 per review.*
+
+**Why two providers?** The twin review system uses two different models so they have different blind spots. If both came from the same provider, they'd share the same weaknesses and miss the same things.
+
+### What is an agent runtime?
+
+An agent runtime is software that lets an AI model DO things — not just talk. It gives the model access to tools: running shell commands (git, compilers, linters), reading/writing files, calling APIs (GitHub, Jira). Without a runtime, the model can only generate text. With one, it can actually write code, run tests, and open PRs.
+
+The runtime also handles **scheduling** — running the model on a timer ("check for CI failures every 30 minutes"). This is what "cron" means throughout these docs: a scheduled task that runs automatically at an interval.
+
+Options:
+
+| Runtime | What it is | Get started |
+|---------|-----------|-------------|
+| [OpenClaw](https://openclaw.ai) | Self-hosted agent platform. Built-in scheduling, tool access, persistent workspace. What this system was built on. | Install on a Linux machine. Free, open source. |
+| [Hermes](https://github.com/socrates-ai/hermes) | Temporal-based agent runtime. Scheduling + tool use with workflow orchestration. | Self-hosted. Requires Temporal cluster. |
+| GitHub Actions (self-hosted runner) | Use GitHub's `schedule:` triggers to run prompts on a timer. The runner machine is the workspace. | Free if you have a machine. Cheapest starting point. |
+| Any agent framework with timers | LangGraph, CrewAI, AutoGen, etc. | Varies. You build the scheduling + tool glue yourself. |
+
+**You don't need to pick the "right" one to start.** The loops are prompt patterns + scheduling. If your system can run a prompt on a timer with access to git and a GitHub API token, it works.
+
+### What does this cost to run?
+
+Rough monthly costs for a single active repo:
+
+| Component | Cost | Notes |
+|-----------|------|-------|
+| Triage (cheap model, every 30 min) | ~$5–10 | Most ticks find nothing — cheap dispatch |
+| Dev loop (expensive model, triggered) | ~$20–50 | Depends on PR volume |
+| Twin reviews (2 models per PR) | ~$10–30 | ~$0.50–$2 per review × 2 models |
+| Self-review | ~$5–15 | One review per PR |
+| Post-merge audit | ~$5–10 | Every 4 hours, usually finds nothing |
+| **Total** | **~$45–115/month** | For an active repo with 5–10 PRs/week |
+
+For comparison: one senior engineer costs $15,000–25,000/month. This system doesn't replace them — it removes the grunt work so they can focus on design and decisions.
+
+### Minimum viable setup (cheapest possible)
+
+1. **One model provider account** (OpenAI or Anthropic, ~$20 prepaid credits)
+2. **A Linux machine** (your laptop, a $5/month VPS, or a spare Raspberry Pi)
+3. **An agent runtime** (OpenClaw is free, or just use `cron` + a CLI agent)
+4. **A GitHub/Gitea/GitLab account** with API access to your repo
+
+You can start with just triage + dev loop (two cron jobs, one cheap model, one expensive model) for under $30/month.
+
+---
+
 ## Step 0: Document Before You Automate
 
 The most common adoption failure: setting up all the loops on day one without any documentation in place. The triage gate fires constantly, the agent guesses at conventions, reviews are subjective rather than checkable.
