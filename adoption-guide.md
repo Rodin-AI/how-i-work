@@ -325,7 +325,7 @@ Don't skip `-race`. Don't skip `-count=1` (disables test caching).
 ### Loop 3: Self-Review (immediately after PR push)
 
 ```
-1. Switch to a DIFFERENT model than you used for dev
+1. Spawn a CLEAN session with no context from the dev work (different model is a bonus, but isolation is the requirement)
 2. Pull your own diff
 3. Review for:
    - Error handling gaps (Go: unchecked errors, bare returns)
