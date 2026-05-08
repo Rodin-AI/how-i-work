@@ -384,3 +384,71 @@ If the migration IS complete:
 3. **Propagate immediately.** Don't document a rename and "get to the code later." The moment the domain doc merges, the code is wrong. Fix it now.
 4. **Block new work until propagation is complete.** This feels expensive. It's cheaper than six months of vocabulary drift.
 5. **Grep is your friend.** After the final propagation PR merges, grep the entire repo for the old term. If it appears anywhere — comments, tests, variable names, docs — you're not done.
+
+---
+
+## Tensions and honest answers
+
+The system described above has real tensions. They're worth addressing directly rather than pretending they don't exist.
+
+### Who quality-gates the documentation?
+
+If the conversation phase produces weak documentation, everything downstream degrades — but the system gives you no way to detect that until a post-merge audit finds gaps months later. Right?
+
+Not quite. **Documentation goes through the same review pipeline as code.** Domain doc PRs get twin reviews. Self-review happens. The same severity labels apply. A domain doc with ambiguous vocabulary or internal contradictions gets REQUEST_CHANGES just like a module with unchecked errors.
+
+The test: can the twin reviewers identify a specific, actionable issue with the doc? If the doc is vague enough that a review bot flags "this term is used two ways in the same section" — that's a quality gate catching weak documentation before it merges.
+
+It's not perfect. A doc can be internally consistent but wrong about the domain. That's what the human conversation phase is for — ensuring the documented understanding actually matches reality. But at minimum: documentation quality is reviewed, not assumed.
+
+### Reference docs go stale
+
+"Build them once, use them everywhere" is an overstatement. Kubernetes patterns from three years ago differ from today. Frameworks evolve. Best practices shift.
+
+**The mitigation: periodic refresh.** A scheduled job (weekly or monthly) re-analyzes the source repos and flags divergences from the documented patterns. Not a full re-extraction — a delta check:
+
+- Has the source project changed how it handles errors since our pattern was extracted?
+- Are there new patterns in recent commits that we don't document?
+- Has an official style guide been updated that contradicts our extracted patterns?
+
+When divergences are found, they surface as recommendations for human review — not automatic updates. The human decides whether the project evolved for good reasons (update our patterns) or whether it's a temporary experiment (keep our patterns as-is).
+
+Reference docs aren't write-once. They're write-once-and-maintain-with-a-scheduled-check.
+
+### The triage gate creates a bottleneck
+
+If the agent flags ambiguity and the human is unavailable for 12 hours, does all work stop?
+
+**No — because unambiguous work still exists.** The triage gate only blocks work that requires undocumented decisions. Meanwhile:
+
+- CI failures get fixed (unambiguous — the test says what's wrong)
+- Review feedback gets addressed (unambiguous — the reviewer said what to change)
+- Convention migrations continue (unambiguous — the convention is documented)
+- Free-time improvements happen (pre-approved category, no human gating)
+
+The bottleneck is real but narrow. It only blocks *new feature implementation* where the domain isn't yet clear. And that's exactly the work you WANT blocked — because implementing against an unclear domain produces code that will be thrown away.
+
+For teams operating across timezones, additional mitigations:
+
+- **Flag batching:** Don't interrupt the human for each flag. Batch them into a daily digest: "3 items need your input before I can proceed."
+- **Pre-approved categories:** Free-time work, bug fixes, and convention enforcement don't need the gate. Only new domain work does.
+- **Partial resolution:** Sometimes a flag can be resolved by reading existing docs more carefully. The agent should attempt self-resolution (check related domain docs, look for analogous decisions) before escalating. Only truly novel decisions need human input.
+
+### Can the agent build its own fuel?
+
+Yes. And it should.
+
+The initial reference doc extraction — analyzing top open-source projects, extracting patterns, organizing by concern — is exactly the kind of work the agent excels at. It can:
+
+1. **Identify authoritative sources** (sort repos by sustained engineering metrics)
+2. **Clone and analyze** (read source, identify patterns, compare to official docs)
+3. **Draft the pattern docs** (organize findings, add examples, note divergences)
+4. **Submit for human review** (the human validates, the agent writes)
+
+In practice, this is how it actually works: spawn sub-agents (one per source project to avoid crashes from large repos), each extracts patterns from their assigned project, results get assembled into a draft, the human reviews and refines.
+
+The investment isn't "human writes all reference docs." It's "human directs and reviews, agent does the extraction heavy-lifting." That changes the adoption curve from "spend weeks writing docs" to "spend days reviewing docs the agent drafted."
+
+The key constraint: the human must still validate. An agent extracting patterns from Kubernetes will find real patterns — but it might also find historical accidents, deprecated approaches, or conventions specific to that project's unique context. The human's job is to decide what's universal vs what's project-specific.
+
+---
