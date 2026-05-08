@@ -2,6 +2,29 @@
 
 You've read `how-i-work.md` and want to run the same loops on your own repos. This guide covers the concrete setup.
 
+Before you configure loops, read [The Secret Sauce](the-secret-sauce.md). The loops are the engine; documentation is the fuel. Without the fuel, the loops produce noise instead of quality.
+
+---
+
+## Step 0: Document Before You Automate
+
+The most common adoption failure: setting up all the loops on day one without any documentation in place. The triage gate fires constantly, the agent guesses at conventions, reviews are subjective rather than checkable.
+
+**Before enabling any loop, create at minimum:**
+
+1. **A domain glossary** — What are the core concepts? What do you call them? (Even 20 terms is enough to start.)
+2. **A conventions doc** — How is code structured in this repo? Error handling, naming, module layout. Not aspirational — descriptive of what exists today.
+3. **One reference pattern** — Pick the most common thing the agent will write (e.g., "add a new API endpoint" or "add a new GenServer") and document how it should look.
+
+This takes 2-4 hours. It pays back immediately because:
+- The triage gate has something to check against ("can I implement this using documented facts?")
+- Self-review has conventions to verify ("does this match the documented patterns?")
+- Twin reviews have criteria beyond subjective taste ("the convention says X, this does Y")
+
+**The test:** If the agent asked "how should I handle errors in this repo?" — could it answer that question by reading your docs? If not, you're not ready for automation.
+
+See [The Secret Sauce: how documentation compounds](the-secret-sauce.md#how-documentation-compounds) for why this investment grows over time rather than being a one-time cost.
+
 ---
 
 ## Prerequisites
@@ -46,6 +69,15 @@ permissions:
 ```
 
 **Start with `can_merge: false`.** The agent opens PRs and hands them to humans. Trust is earned by a track record of clean PRs, not by configuration.
+
+**When to flip `can_merge: true`:**
+- The agent has opened 20+ PRs that were merged without significant rework
+- Twin reviews consistently find only NITs, not WARNINGs or CRITICALs
+- Post-merge review rarely finds gaps (< 1 gap issue per 10 merges)
+- You trust the test suite to catch regressions (high coverage on critical paths)
+- The human has reviewed enough output to trust the agent's judgment
+
+This is a human decision, not a metric threshold. Some teams never flip it — and that's fine. The system works either way.
 
 ---
 
@@ -122,7 +154,14 @@ Don't skip `-race`. Don't skip `-count=1` (disables test caching).
 
 **Why two models?** They have different blind spots. GPT-5 catches self-contradictions and attack chains. Sonnet/Opus catch cross-document consistency and pattern deviations. Neither alone is sufficient.
 
-**If you can't create bot accounts:** Run the twin pipeline as sub-agents and post a single synthesized review from your own account.
+**Bot accounts for reviews:** Ideally, each reviewer posts as its own account (e.g., `sonnet-review`, `gpt-review`). This makes it clear who said what and allows re-requesting reviews independently.
+
+**⚠️ Enterprise GitHub note:** On GitHub Enterprise, creating bot accounts (machine users) often requires IT approval, security review, or a service account request process that takes days-to-weeks. Plan for this early — it's a common adoption blocker. Options if blocked:
+- Run both reviewers as sub-agents posting from your own account (prefix findings with the model name)
+- Use a single service account for both, with clearly labeled sections
+- Request one "CI bot" account and multiplex both reviewers through it
+
+Don't let the bot account problem block your entire setup. Start with sub-agents, migrate to dedicated accounts when IT approves them.
 
 ### Loop 5: Handoff
 
@@ -157,6 +196,8 @@ For PRs you reviewed that have since been merged:
 ```
 
 **This is the most important loop.** Without it, the system drifts toward noise. Reviews that don't cause code to improve are just wasted tokens.
+
+**⚠️ Critical constraint:** Lookback *recommends* prompt and pattern changes — it never applies them autonomously. Self-modification of review criteria requires human approval. See [the scaling doc's failure modes section](scaling-multiple-repos.md#lookback-self-modification-risk) for why.
 
 ---
 
@@ -303,3 +344,12 @@ The system works because every loop feeds the next one. Work creates reviews, re
 4. Nothing stays noisy without pruning (lookback)
 
 If you only implement one thing beyond basic dev work, implement **post-merge review**. It's the loop that catches "good enough" before it becomes technical debt.
+
+---
+
+## Further reading
+
+| Document | What it covers |
+|----------|----------------|
+| [The Secret Sauce](the-secret-sauce.md) | Why documentation drives the system, reference docs, the cascade discipline, failure tensions |
+| [Scaling to Multiple Repos](scaling-multiple-repos.md) | Global dispatcher, WIP rules, failure modes and mitigations |
