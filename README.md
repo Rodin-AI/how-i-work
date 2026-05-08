@@ -208,6 +208,7 @@ It's not about being smart on any individual step. It's about being relentless a
 | Document | What it covers |
 |----------|----------------|
 | [The Secret Sauce](the-secret-sauce.md) | Why documentation is the fuel that makes the engine work. Conversations, reference docs, the triage gate, and why most AI agent setups fail. |
+| [Building Reference Docs](building-reference-docs.md) | How to write each type of documentation (glossaries, conventions, patterns, ecosystem repos) and keep them alive as code evolves. |
 | [Adoption Guide](adoption-guide.md) | Concrete steps to implement this system yourself — what you need, what it costs, how to set up each loop. Start here if you want to try it. |
 | [Scaling to Multiple Repos](scaling-multiple-repos.md) | Architecture for operating across many repos: global dispatcher, WIP rules, failure modes and mitigations. |
 
