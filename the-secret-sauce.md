@@ -127,9 +127,11 @@ Documentation isn't write-once. The loops improve it:
 
 **Post-merge review finds a gap** → "The issue didn't specify behavior for timeout errors" → Update the domain docs to specify timeout semantics → Future issues in that area are more specific → Future PRs handle timeouts correctly from the start.
 
-**Lookback finds noise** → "Reviews keep flagging X but nobody acts on it" → Either X doesn't matter (remove it from patterns) or X matters but isn't understood (improve the documentation of why it matters) → Future reviews are more precise.
+**Lookback finds noise** → "Reviews keep flagging X but nobody acts on it" → Either X doesn't matter (remove it from patterns) or X matters but isn't understood (improve the documentation of why it matters) → Future reviews are more precise. Note: lookback *recommends* prompt and pattern changes but never applies them autonomously. A human reviews and approves before any review criteria change. Self-modification of the review system requires human oversight. (See [failure modes in the scaling doc](scaling-multiple-repos.md#lookback-self-modification-risk) for the full rationale.)
 
 **Triage flags ambiguity** → Human makes a decision → Decision gets documented → Next time the same question comes up, the agent doesn't need to ask.
+
+**Crucially: triage frequency is a signal about documentation quality.** If the agent keeps flagging ambiguity in the same domain area, that's not the agent being needy — it's the documentation being insufficient. A healthy system sees triage flags *decrease over time* as the documented design fills in gaps. If they're not decreasing, the human isn't investing enough in the conversation and documentation phases. The flags are the metric.
 
 Every cycle through the loops produces documentation improvements. Documentation improvements make future cycles faster and more accurate. This is the compound interest of the system.
 
