@@ -2,6 +2,17 @@
 
 Without reference docs, an agent writes code that compiles. With reference docs, it writes code that *belongs in your codebase*. This page tells you what to build, how to build it, and how to keep it alive.
 
+## Contents
+
+1. [What to Build](#part-1-what-to-build) — the six types, where they live, how to decide
+2. [How to Write Each One](#part-2-how-to-write-each-one)
+   - [Domain glossary](#domain-glossary)
+   - [Conventions](#conventions)
+   - [Reference patterns](#reference-patterns)
+   - [Ecosystem patterns](#ecosystem-patterns)
+3. [Keeping Documentation Alive](#part-3-keeping-documentation-alive) — rot rates, detection, ownership
+4. [Getting Started: The 4-Hour Bootstrap](#getting-started-the-4-hour-bootstrap)
+
 ---
 
 ## Part 1: What to Build
