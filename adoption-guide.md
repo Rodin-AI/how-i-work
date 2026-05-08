@@ -408,3 +408,171 @@ If you only implement one thing beyond basic dev work, implement **post-merge re
 |----------|----------------|
 | [The Secret Sauce](the-secret-sauce.md) | Why documentation drives the system, reference docs, the cascade discipline, failure tensions |
 | [Scaling to Multiple Repos](scaling-multiple-repos.md) | Global dispatcher, WIP rules, failure modes and mitigations |
+
+---
+
+## Appendix: Documentation Templates
+
+These templates are starting points — adapt them to your language and domain. The important thing isn't the exact sections; it's that every feature goes through the same structure, and that structure is checkable by automation.
+
+### Feature Design Template
+
+Every feature that introduces new behavior gets a design doc before implementation begins. Not after. Not "when we have time." Before.
+
+```markdown
+# [Feature Title]
+
+[Opening paragraph: what problem this solves, what happens WITHOUT it.
+Reference the prior doc or issue that establishes the need.]
+
+---
+
+## Context ownership
+
+**Owner:** [which subsystem/module/team owns this]
+**Collaborators:** [what other parts of the system are affected and how]
+
+---
+
+## Mechanism
+
+[How it works. Present tense, prescriptive. Not goals — behavior.]
+
+{Mermaid diagram: architecture placement, data flow, or state machine}
+
+### State tracking (if stateful)
+
+| State | Meaning | Transitions to |
+|-------|---------|----------------|
+|       |         |                |
+
+### Events (produced or consumed)
+
+| Event | Trigger | Action |
+|-------|---------|--------|
+|       |         |        |
+
+---
+
+## Core logic
+
+[The algorithm. What is evaluated, when, what the outcomes are.]
+
+### Why this approach (not the obvious one)
+
+[Name the failure scenario that motivates this design over the simpler alternative.]
+
+### Edge cases
+
+**[Case name].** Scenario, behavior, why it's correct.
+
+---
+
+## Configuration
+
+[For each tunable parameter:]
+
+| Parameter | Too low means... | Too high means... | Target |
+|-----------|-----------------|-------------------|--------|
+|           |                 |                   |        |
+
+---
+
+## Failure modes
+
+| Scenario | Outcome | Recovery |
+|----------|---------|----------|
+|          |         |          |
+
+---
+
+## Cross-references
+
+- [Related doc](link) — what aspect it covers
+```
+
+**Why this template works for agents:**
+- "What happens WITHOUT it" forces problem clarity (agent can evaluate if the issue even needs solving)
+- Mermaid diagrams are parseable — the agent can verify implementation matches the diagram
+- The failure modes table becomes testable acceptance criteria
+- Edge cases become test cases
+- "Why this approach" prevents the agent from refactoring toward the "obvious" alternative
+
+### Design Validation Checklist
+
+Run Phase 1 before implementation starts. Run Phase 2 before marking the PR ready for review. Items that don't apply get marked N/A with a one-line justification — blank is not the same as N/A.
+
+#### Phase 1 — Design Review (before writing code)
+
+**Problem framing:**
+- [ ] Opening paragraph states what happens WITHOUT this feature
+- [ ] References the specific prior doc or issue that establishes the need
+- [ ] Scope is clear from reading the document alone
+
+**Ownership:**
+- [ ] Names exactly one owning subsystem/module/context
+- [ ] If it crosses boundaries, relationship patterns are named for each crossing
+- [ ] New terms checked against existing glossary — no synonyms for existing concepts
+
+**Mechanism clarity:**
+- [ ] A newcomer can understand the design from this doc alone (plus cross-refs)
+- [ ] At least one diagram shows architecture placement or data flow
+- [ ] Process/component placement is justified — why here, what breaks if moved
+- [ ] States (if any) have an explicit table with meanings
+
+**Edge cases and failures:**
+- [ ] Every edge case that could cause silent failure is named
+- [ ] Failure mode table covers: crash, dependency down, data inconsistency, timing race
+- [ ] Each failure states recovery path (automatic, manual, or alert)
+- [ ] Default behavior is fail-closed for safety-critical paths
+
+**Configuration:**
+- [ ] Every tunable parameter has "too low" and "too high" failure scenarios
+- [ ] No magic numbers without justification
+- [ ] Decision framework exists even if exact value isn't known yet
+
+**Integration:**
+- [ ] Events documented with shape, producer, consumers
+- [ ] Dependencies on other features are cross-references, not inline duplications
+- [ ] No new vocabulary that duplicates existing terms
+
+**Documentation quality:**
+- [ ] Present tense, prescriptive (how it behaves, not how it might)
+- [ ] No deliberation in the doc — investigation belongs in comments/ADRs
+- [ ] Every non-obvious choice explains why the alternative was rejected
+
+#### Phase 2 — Implementation Review (before marking PR ready)
+
+**Architecture fit:**
+- [ ] Feature lives in exactly one namespace/module/package
+- [ ] No business logic in data layer (schemas, models, DTOs)
+- [ ] External side effects go through a defined boundary (context module, service layer, port)
+- [ ] No direct DB/IO calls from controllers, handlers, or UI layer
+
+**Testing:**
+- [ ] Unit tests cover core logic in isolation
+- [ ] Integration tests cover boundary crossings
+- [ ] Edge cases from the design doc have corresponding test cases
+- [ ] No time-dependent tests (no `sleep` — use deterministic synchronization)
+- [ ] Tests are isolated — can run in parallel without interference
+
+**Observability:**
+- [ ] Key operations emit metrics or structured log events
+- [ ] Error paths log with enough context to diagnose without reproducing
+- [ ] Metric tags are low-cardinality (< 100 distinct values per tag)
+
+**Error handling:**
+- [ ] Every external call has explicit error handling (no bare unwrap/raise/panic)
+- [ ] Errors at boundaries are translated to the local domain's vocabulary
+- [ ] User-facing errors are distinct from internal errors
+
+### How agents use these templates
+
+The templates aren't just for humans writing docs. They're machine-checkable gates:
+
+1. **Triage reads the design doc** and checks: does it pass Phase 1? If not, the issue isn't ready for implementation — flag it.
+2. **Self-review runs Phase 2** against the PR diff. Each checkbox becomes a concrete question: "did the code add error handling for external calls?"
+3. **Twin review cross-references the design** — does the implementation match the mechanism section? Do the test cases cover the edge cases listed?
+4. **Post-merge review checks completeness** — every failure mode in the table should have a corresponding test or handler in the code.
+
+The templates turn subjective review ("does this look good?") into objective verification ("does this satisfy the checklist?"). That's what makes autonomous review possible — the standard is documented, not vibes.
