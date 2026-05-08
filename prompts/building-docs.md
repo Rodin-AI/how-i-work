@@ -2,9 +2,15 @@
 
 Copy-pasteable prompts for constructing each type of documentation. Give these to your agent with access to the codebase.
 
+Each prompt has two parts:
+1. **Construction** — builds the doc from scratch
+2. **Validation** — tests whether the doc is actually useful (run this AFTER construction, ideally in a clean session that hasn't seen the source code)
+
 ---
 
 ## Domain Glossary
+
+### Build it
 
 ```
 I need you to build a domain glossary for this project.
@@ -29,9 +35,32 @@ definition, could I reconstruct what the struct/table should contain?" If
 no — the definition is too vague.
 ```
 
+### Validate it
+
+```
+Using ONLY the glossary at docs/domain/glossary.md (do not read source code),
+answer these questions:
+
+1. What's the difference between [TERM A] and [TERM B]?
+   (Pick two terms that are easily confused in this domain)
+2. If I create a new [TERM], what other entities must already exist?
+3. Can a [TERM] exist without a [RELATED TERM]? Why or why not?
+4. What are the valid values for [CONSTRAINED FIELD]?
+5. Draw the relationship between [TERM A], [TERM B], and [TERM C].
+
+For each answer:
+- If you could answer confidently from the glossary alone: PASS
+- If you had to guess or assume: FAIL — note what's missing
+
+Then verify against the source code: were your glossary-only answers correct?
+Any wrong answer = the glossary is misleading (worse than incomplete).
+```
+
 ---
 
 ## Conventions
+
+### Build it
 
 ```
 I need you to document the conventions used in this repo.
@@ -61,9 +90,35 @@ passes review without asking questions? If any section requires "you
 just have to know" tribal knowledge — it's incomplete.
 ```
 
+### Validate it
+
+```
+Using ONLY CONVENTIONS.md (do not look at existing code), write the
+following from scratch:
+
+1. A new function that fetches a [DOMAIN OBJECT] by ID and handles
+   the "not found" case. Include the error handling.
+2. The test file for that function. Name it, place it in the right
+   directory, use the right assertion library and style.
+3. A new package/module for a feature called "notifications."
+   What files do you create? What do you name them? Where do they go?
+
+Then compare your output to how the codebase ACTUALLY does these things.
+
+Scoring:
+- Matches existing patterns exactly: PASS
+- Close but minor differences: PARTIAL (note what the doc didn't specify)
+- Significantly different from reality: FAIL (doc is misleading or incomplete)
+
+For every PARTIAL or FAIL: what specific sentence or rule would fix the
+conventions doc so this mistake can't happen again?
+```
+
 ---
 
 ## Reference Pattern
+
+### Build it
 
 ```
 I need you to document a reference pattern for the most common unit
@@ -89,9 +144,37 @@ produce something that passes review? If any step requires guessing —
 it's incomplete.
 ```
 
+### Validate it
+
+```
+Using ONLY the reference pattern doc (do not look at existing code),
+implement a new <THING> called "<NAME>".
+
+Follow the pattern document exactly:
+- Create every file it specifies
+- Use the structure it shows
+- Write the tests it requires
+- Follow the conventions it references
+
+Then review your implementation:
+1. Does it compile/build without errors?
+2. Do the tests pass?
+3. Compare to a real example in the codebase — what's different?
+
+For each difference:
+- Was the pattern doc ambiguous? (could be read multiple ways)
+- Was the pattern doc incomplete? (left out a step you had to infer)
+- Was the pattern doc wrong? (told you to do X but real code does Y)
+
+For every issue found: propose the exact text to add to the pattern doc
+that would prevent this mistake.
+```
+
 ---
 
 ## Ecosystem Patterns
+
+### Build it
 
 ```
 I need you to build an ecosystem pattern file for: <CONCERN>
@@ -122,9 +205,34 @@ Quality check: every claim must cite a specific file in a specific project.
 does X" is. If you can't cite it, don't claim it.
 ```
 
+### Validate it
+
+```
+For each claim in <concern>.md:
+
+1. Go to the cited file in the cited project at the cited version.
+2. Confirm the code actually does what the doc says it does.
+3. Check: has this file changed significantly since the cited version?
+   (Look at current main branch — does the pattern still hold?)
+
+Scoring:
+- Claim matches source code: VERIFIED
+- Claim is outdated (source changed since): STALE — note current behavior
+- Claim doesn't match source (was wrong): WRONG — remove or correct
+- Claim has no citation: UNVERIFIABLE — add citation or delete
+
+Also test the recommendation:
+- Write a small piece of code following the "Recommendation" section.
+- Does it feel natural in the language? Would it pass review on any of
+  the source projects? If it would look out of place in kubernetes or
+  etcd, the recommendation might be aspirational rather than grounded.
+```
+
 ---
 
 ## Implementation Docs
+
+### Build it
 
 ```
 I need you to document how <SUBSYSTEM> works internally.
@@ -152,9 +260,35 @@ HOW things work today, knowing that the HOW may change. If you catch
 yourself writing "an Order is..." that's a glossary entry, not impl docs.
 ```
 
+### Validate it
+
+```
+Simulate this scenario: <SUBSYSTEM> has stopped producing output.
+Using ONLY docs/impl/<subsystem>.md:
+
+1. What are the possible failure points? (List them from the doc)
+2. For each failure point, what would you check first? (metrics, logs, state)
+3. What are the dependencies — what upstream failures could cause this?
+4. If the problem is at step N, what's the blast radius downstream?
+
+Scoring:
+- Could identify all plausible failure points from the doc: PASS
+- Had to guess about failure modes: FAIL (doc doesn't cover what can go wrong)
+- Could trace dependencies: PASS
+- Had to guess about dependencies: FAIL (doc doesn't cover integration points)
+- Could assess blast radius: PASS
+- Had to guess what's downstream: FAIL (doc doesn't show the full flow)
+
+Then compare your answers against the actual code. Did the doc lead you
+to the right places? Would on-call be able to use this doc at 3am to
+diagnose the issue without reading source code?
+```
+
 ---
 
 ## Feature Design
+
+### Build it
 
 ```
 I need to write a feature design doc for: <FEATURE>
@@ -183,4 +317,29 @@ Output format: docs/designs/<feature>.md
 Quality check: could someone implement this feature WITHOUT talking to
 you further? If any acceptance criterion is ambiguous ("works well",
 "handles errors properly") — it's not specific enough.
+```
+
+### Validate it
+
+```
+Using ONLY docs/designs/<feature>.md, answer:
+
+1. For each acceptance criterion: write the test that proves it's met.
+   (If you can't write a concrete test — the criterion is too vague.)
+2. Are there any implicit requirements NOT stated in the doc that you'd
+   need to know? (e.g., "it should be fast" — how fast? "handle errors" — which ones?)
+3. What would you build FIRST? Can you determine implementation order
+   from the doc alone, or do you need to ask?
+4. Read the "out of scope" section. Now: is there anything in the
+   acceptance criteria that contradicts the scope boundary?
+
+Scoring:
+- Every criterion has a writable test: PASS
+- Any criterion requires clarification: FAIL (criterion is ambiguous)
+- Implementation order is determinable: PASS
+- Order requires discussion: PARTIAL (add sequencing guidance)
+- Scope and criteria are consistent: PASS
+- Contradiction found: FAIL (scope and criteria disagree)
+
+For each FAIL: propose the specific text change that resolves it.
 ```
