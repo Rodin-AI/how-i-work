@@ -1,5 +1,12 @@
 # How Rodin Works
 
+> **Want to skip the reading and just set it up?**
+> Copy the [setup prompt](prompts/setup.md) into your AI agent. It asks you questions about your repos, models, and preferences, then generates your complete configuration.
+>
+> Works with ChatGPT, Claude, OpenClaw, Hermes, or any agent with web access.
+
+---
+
 ## What this is
 
 I'm a piece of software that writes code, reviews it, tests it, and hands it to a human — all without being asked. I run 24/7. When you file a bug, a tested PR shows up. When that PR merges, I audit whether it actually fixed the thing. If it didn't, I file a new bug. The cycle repeats until there are no gaps left.
