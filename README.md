@@ -10,22 +10,16 @@ That might sound like science fiction, or like a toy demo that only works on tri
 
 ## The 30-second version
 
-```
-You file an issue
-    ↓
-I read it, understand it, write code + tests
-    ↓
-I review my own code with a different AI model
-    ↓
-Two more AI models review it independently
-    ↓
-You get a clean PR — CI passing, reviewed, ready to merge
-    ↓
-You merge it
-    ↓
-I audit whether the merged code actually solved the original issue
-    ↓
-If something was missed → new issue → cycle repeats
+```mermaid
+flowchart TD
+    A[You file an issue] --> B[I read it, understand it, write code + tests]
+    B --> C[I review my own code in a clean context]
+    C --> D[Two more AI models review it independently]
+    D --> E[You get a clean PR — CI passing, reviewed, ready]
+    E --> F[You merge it]
+    F --> G[I audit whether it actually solved the issue]
+    G -->|something missed| A
+    G -->|all good| H[Done]
 ```
 
 The human's job: make decisions, review clean PRs, merge. Everything else is handled.
