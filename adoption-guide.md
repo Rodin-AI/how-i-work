@@ -23,6 +23,61 @@ This takes 2-4 hours. It pays back immediately because:
 
 **The test:** If the agent asked "how should I handle errors in this repo?" — could it answer that question by reading your docs? If not, you're not ready for automation.
 
+### The documentation sufficiency checklist
+
+Before enabling loops, run through these prompts. For each one, try to answer using ONLY what's written in your repo's docs. If you can't — that's a gap to fill.
+
+**Domain understanding:**
+- [ ] "What are the 10 most important concepts in this system and how do they relate?"
+- [ ] "What's the difference between [concept A] and [concept B]?" (pick two that are easy to confuse)
+- [ ] "What happens when [common operation] fails halfway through?"
+- [ ] "Which parts of the system own which responsibilities?" (bounded contexts)
+- [ ] "What invariants must ALWAYS hold, regardless of implementation?"
+
+**Conventions:**
+- [ ] "Show me the correct way to add a new [most common unit of work — endpoint, module, handler, etc.]"
+- [ ] "How does error handling work here? What gets rescued vs propagated vs logged?"
+- [ ] "What's the testing strategy? Unit vs integration vs e2e boundaries?"
+- [ ] "Where does validation live? Input boundary? Domain layer? Both?"
+- [ ] "What naming conventions exist? (files, modules, functions, variables, DB tables)"
+
+**Architecture:**
+- [ ] "Why is the system structured this way and not [obvious alternative]?"
+- [ ] "What are the trust boundaries? What talks to what, and who validates at each boundary?"
+- [ ] "If I need to add a feature that crosses two subsystems, what's the integration pattern?"
+- [ ] "What's shared and what's private? Where are the fences?"
+
+**Process:**
+- [ ] "What does 'done' mean for a PR in this repo?"
+- [ ] "What are the non-negotiable quality checks before merge?"
+- [ ] "What's in scope for the agent vs what requires human decision?"
+
+**Scoring:**
+- ✅ Can answer from docs alone → Ready for automation in that area
+- ⚠️ Can answer but it's in someone's head, not written down → Document it first
+- ❌ Can't answer at all → Need a conversation to figure it out, then document
+
+You don't need 100% coverage to start. But you need the **conventions** and **process** sections mostly green. Domain gaps are okay early — the triage gate will flag them as you go. Convention gaps are not okay — they cause every PR to drift in a different direction.
+
+### Using these prompts as a gap-finding tool
+
+These aren't just a one-time checklist. Run them periodically (monthly, or when triage flags increase):
+
+```
+Gap-finding prompt (give this to your agent):
+
+"Read all documentation in this repo. Then answer the following
+questions using ONLY what's documented. For each question, respond
+with one of:
+  - ANSWERED: [your answer, citing the source file]
+  - PARTIAL: [what you can answer + what's missing]
+  - UNDOCUMENTED: [your best guess + why you're not confident]
+
+[paste questions from checklist above]"
+```
+
+Every UNDOCUMENTED response is a conversation waiting to happen. Every PARTIAL is a doc that needs expansion. The agent identifying its own knowledge gaps is cheaper than discovering them mid-implementation when it guesses wrong.
+
 See [The Secret Sauce: how documentation compounds](the-secret-sauce.md#how-documentation-compounds) for why this investment grows over time rather than being a one-time cost.
 
 ---
