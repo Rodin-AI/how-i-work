@@ -1,7 +1,7 @@
 # How Rodin Works
 
-> **Want to skip the reading and just set it up?**
-> Copy the [setup prompt](prompts/setup.md) into your AI agent. It asks you questions about your repos, models, and preferences, then generates your complete configuration.
+> **First time here? Start (and possibly finish) with this:**
+> Copy the [setup prompt](prompts/setup.md) into your AI agent. It asks you questions, generates your configuration, finds documentation gaps, and creates your first work items. Everything else in this repo is reference material that supports it.
 >
 > Works with ChatGPT, Claude, OpenClaw, Hermes, or any agent with web access.
 
@@ -205,23 +205,25 @@ It's not about being smart on any individual step. It's about being relentless a
 
 ## Going deeper
 
-| Document | What it covers |
-|----------|----------------|
-| [The Secret Sauce](the-secret-sauce.md) | Why documentation is the fuel that makes the engine work. Conversations, reference docs, the triage gate, and why most AI agent setups fail. |
-| [What We Learned](what-we-learned.md) | Research findings that shaped the architecture — why models see differently, signal-to-noise ratio, specialization vs identical mandates, context isolation. |
-| [Building Reference Docs](building-reference-docs.md) | How to write each type of documentation (glossaries, conventions, patterns, ecosystem repos) and keep them alive as code evolves. |
-| [Adoption Guide](adoption-guide.md) | Concrete steps to implement this system yourself — what you need, what it costs, how to set up each loop. Start here if you want to try it. |
-| [Scaling to Multiple Repos](scaling-multiple-repos.md) | Architecture for operating across many repos: global dispatcher, WIP rules, failure modes and mitigations. |
+**If you're new, read in this order.** The setup prompt handles most of the work — these explain WHY things work the way they do.
+
+| # | Document | What it covers | Required? |
+|---|----------|----------------|-----------|
+| 1 | [Adoption Guide](adoption-guide.md) | What you need, what it costs, how to set up each loop | Yes — read this first |
+| 2 | [Building Reference Docs](building-reference-docs.md) | How to write the documentation your agent needs | Yes — the setup prompt will send you here |
+| 3 | [The Secret Sauce](the-secret-sauce.md) | Why documentation makes the difference between a demo and a system | Recommended — explains the philosophy |
+| 4 | [What We Learned](what-we-learned.md) | Research: why multiple models catch more than one, why signal isolation matters | Optional — for skeptics who want evidence |
+| 5 | [Scaling to Multiple Repos](scaling-multiple-repos.md) | Architecture for operating across many repos | Optional — only when you outgrow one repo |
 
 ---
 
 ## Prompts
 
-Copy-pasteable prompts you can give to any AI agent. Each file is self-contained — one doc type, one file, build + validate in sequence.
+Copy-pasteable prompts you can give to any AI agent. **Start with setup.md** — it handles everything. The build prompts are for later, when the setup process tells you to create specific documentation.
 
 | Prompt | What it does |
 |--------|-------------|
-| [Setup](prompts/setup.md) | 5-phase guided setup with quality gates — takes you from zero to running system |
+| [Setup](prompts/setup.md) | **Start here.** 5-phase guided setup with quality gates — takes you from zero to running system |
 | [Build: Glossary](prompts/build-glossary.md) | Construct and validate a domain glossary |
 | [Build: Conventions](prompts/build-conventions.md) | Construct and validate a conventions doc |
 | [Build: Reference Pattern](prompts/build-reference-pattern.md) | Construct and validate a reference pattern blueprint |
@@ -233,7 +235,7 @@ Copy-pasteable prompts you can give to any AI agent. Each file is self-contained
 
 ## Examples
 
-These are the actual prompts that drive each loop. They're specific to [OpenClaw](https://openclaw.ai) but the patterns work with any runtime that can schedule AI tasks with tool access.
+Real prompts that drive each loop. These are written for [OpenClaw](https://openclaw.ai) but the structure works with any runtime that can schedule AI tasks — GitHub Actions, cron + Claude CLI, Hermes, or a custom scheduler. Adapt the tool calls to your runtime; the logic and instructions are universal.
 
 | Loop | Prompt |
 |------|--------|
