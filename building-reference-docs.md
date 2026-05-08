@@ -191,17 +191,10 @@ A Position can be long (positive quantity) or short (negative quantity).
 **Process:**
 
 1. **Pick 3-5 authoritative projects** in your ecosystem. For Go: kubernetes, etcd, cockroachdb. For TypeScript: next.js, prisma, trpc. For Rust: tokio, serde, axum.
-
 2. **Pick a concern** (error handling, testing, concurrency, module structure).
-
 3. **Read their source code** for that concern. Not their docs — their code. How do they ACTUALLY handle errors? What patterns repeat across files?
-
 4. **Extract the pattern.** Describe what you see, with real examples from the source. Note where projects disagree — that's valuable information too.
-
-5. **Organize by question.** Each file answers one question a developer would have:
-   - `error-handling.md` → "How should I handle errors in this ecosystem?"
-   - `concurrency.md` → "What are the concurrency patterns and when do I use each?"
-   - `testing.md` → "How do I structure tests and what do I test?"
+5. **Organize by question.** Each file answers one question a developer would have.
 
 **Repo structure:**
 
@@ -215,44 +208,15 @@ your-org/go-patterns/
 └── module-structure.md    # package layout, internal packages
 ```
 
-**What a pattern file looks like:**
-
-```markdown
-# Error Handling in Go
-
-## Sources analyzed
-- kubernetes/kubernetes (v1.29)
-- etcd-io/etcd (v3.5)
-- cockroachdb/cockroach (v23.2)
-
-## The pattern
-
-All three projects wrap errors with context at each level:
-
-```go
-if err != nil {
-    return fmt.Errorf("fetching pod %s: %w", name, err)
-}
-```
-
-They never:
-- Return bare `err` without wrapping
-- Use `errors.New` for dynamic messages (that's for sentinel errors)
-- Log AND return (pick one — the caller decides)
-
-## Where they disagree
-
-Kubernetes uses `utilruntime.HandleError()` for non-fatal errors in
-controllers. Etcd propagates everything. CockroachDB has a custom
-`errors` package with stack traces.
-
-## Recommendation for our repos
-
-Follow the kubernetes pattern: wrap at every level, log at the boundary,
-propagate in the middle. Use `fmt.Errorf("context: %w", err)` everywhere.
-```
+→ **[See a complete example: ecosystem pattern file](examples/ecosystem-pattern.md)**
 
 **The key insight:** These aren't YOUR opinions. They're documented reality from projects that have been in production for years with hundreds of contributors. The agent can trust them because they're grounded in verifiable sources.
+
+**Common mistakes:**
+- Documenting what you THINK the community does (instead of verifying against source)
+- No version pinning (patterns shift between major versions — cite which version you analyzed)
+- Ignoring disagreements (where projects diverge is where judgment calls live — document both)
+- No "recommendation" section (you read the landscape, now tell your agent which path to follow)
 
 **Time to build:** 4-8 hours for initial 5-file repo. But it compounds — applies to every project in that language forever.
 
@@ -262,13 +226,11 @@ propagate in the middle. Use `fmt.Errorf("context: %w", err)` everywhere.
 
 Building docs is the easy part. The hard part is keeping them current as the codebase evolves. Stale docs are worse than no docs — they cause the agent to confidently write wrong code.
 
-This section covers: how docs go stale, how to detect it, who fixes what, and how to make freshness sustainable.
-
 ---
 
 ## How documentation goes stale
 
-It happens in predictable ways:
+Every type rots at a different speed:
 
 | What rots | Why | How fast |
 |-----------|-----|----------|
@@ -278,25 +240,19 @@ It happens in predictable ways:
 | Domain glossary | New concepts added without glossary entries | Slow (terms are stable) |
 | Ecosystem patterns | Upstream projects evolve | 6-12 months |
 
+The pattern: docs are always most accurate the day they're written. From there, every code change that doesn't also update docs increases drift. The question isn't IF they'll go stale — it's how fast you'll notice.
+
 ---
 
 ## Detecting staleness
 
 The post-merge audit loop catches staleness naturally: if a merged PR contradicts what docs say, it files an issue. But you can also detect it proactively.
 
-**Monthly doc health check (give this to your agent):**
+**Automated detection (monthly, give this to your agent):**
 
-```
-Review all documentation in docs/ and CONVENTIONS.md.
-For each documented pattern, convention, or claim:
-1. Search the codebase for counter-examples (code that contradicts the doc)
-2. Count conforming vs non-conforming instances
-3. If non-conforming > 30%, flag as potentially stale
+For each documented pattern, convention, or claim: search the codebase for counter-examples. Count conforming vs non-conforming instances. If non-conforming > 30%, flag as potentially stale. Output a list of potentially stale docs with evidence (file paths of contradictions).
 
-Output: list of potentially stale docs with evidence (file paths of contradictions)
-```
-
-**Signals that docs need updating:**
+**Human-observable signals:**
 - Triage flags increasing → agent can't find answers → docs have gaps
 - Self-review findings that cite docs but the code "disagrees" → docs or code is wrong
 - New modules that don't follow documented patterns → pattern evolved, doc didn't
@@ -305,6 +261,8 @@ Output: list of potentially stale docs with evidence (file paths of contradictio
 ---
 
 ## Who updates what
+
+Not all documentation is maintained the same way. Some requires human judgment (domain concepts, feature designs). Some can be agent-proposed with human approval (conventions, patterns). Some the agent handles solo (implementation docs after code changes).
 
 | Type | Who updates | When |
 |------|------------|------|
@@ -321,53 +279,42 @@ Output: list of potentially stale docs with evidence (file paths of contradictio
 
 When the agent detects stale docs, it shouldn't silently fix them. Documentation changes affect how ALL future code is written. They need human review.
 
-The pattern:
+**The pattern:**
 
 1. Agent detects contradiction between docs and code
-2. Agent opens a PR that ONLY updates docs (no code changes)
-3. PR description explains: "Code does X. Docs say Y. Evidence: [files]. Proposed update: align docs to code."
+2. Agent opens a PR that ONLY updates docs (no code changes mixed in)
+3. PR description explains: "Code does X. Docs say Y. Evidence: [files]. Proposed: align docs to code."
 4. Human reviews: is the code right (update docs) or are the docs right (file a bug)?
 
-This keeps the human as the authority on "what should be true" while the agent handles the grunt work of finding contradictions and proposing updates.
+This keeps the human as the authority on "what should be true" while the agent handles the grunt work of finding contradictions.
 
 ---
 
 ## Ecosystem pattern refresh
 
-Upstream projects evolve. The patterns you extracted 6 months ago might be outdated. Schedule a quarterly refresh:
+Upstream projects evolve. The patterns you extracted 6 months ago might be outdated.
 
-```
-Review our <language>-patterns repo against current main branches of:
-- [source project 1]
-- [source project 2]
-- [source project 3]
+**Schedule:** Quarterly (or when a source project makes a major release).
 
-For each pattern file:
-1. Check if the sources still follow the documented pattern
-2. Note any new patterns that emerged since last review
-3. Check if any pattern was deprecated or replaced
-4. Flag files where the source reality has diverged from our docs
+**Process:** Review your pattern repo against current main branches of each source project. For each pattern file: check if sources still follow the documented pattern, note new patterns that emerged, flag deprecations, and identify divergence.
 
-Output: list of files needing updates, with evidence from current source
-```
-
-This can be a scheduled task (monthly or quarterly) that runs cheaply — it's just reading code and comparing against docs.
+**Output:** A list of files needing updates, with evidence from current source. This runs cheaply — it's reading code and comparing against docs, not writing new code.
 
 ---
 
 ## Why freshness compounds
 
-Fresh docs don't just prevent errors — they accelerate everything:
+Fresh docs don't just prevent errors — they accelerate every loop in the system:
 
-- **Triage is faster** because the gate can answer "can I do this?" immediately
-- **Dev produces fewer iterations** because the agent writes correct code on the first try
-- **Self-review is more precise** because it's checking against current truth, not stale aspirations
-- **Twin review is more actionable** because findings cite living docs, not dead ones
-- **Post-merge audit is cheaper** because there's less drift to catch
+- **Triage is faster** — the gate can answer "can I do this?" immediately
+- **Dev produces fewer iterations** — the agent writes correct code on the first try
+- **Self-review is more precise** — checking against current truth, not stale aspirations
+- **Twin review is more actionable** — findings cite living docs, not dead ones
+- **Post-merge audit is cheaper** — less drift to catch
 
-Stale docs create a doom loop: docs are wrong → agent writes wrong code → reviews catch it → agent gets confused → more iterations → more cost → docs get more stale because nobody has time to update them.
+**The doom loop:** docs are wrong → agent writes wrong code → reviews catch it → more iterations → nobody has time to fix docs → docs get more wrong.
 
-Fresh docs create a flywheel: docs are right → agent writes correct code → reviews find nothing → everyone saves time → time gets invested in keeping docs fresh → docs stay right.
+**The flywheel:** docs are right → agent writes correct code → reviews find nothing → time gets invested in docs → docs stay right.
 
 ---
 
