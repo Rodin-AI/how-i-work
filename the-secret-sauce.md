@@ -393,6 +393,24 @@ This test prevents implementation details from leaking into domain docs. Domain 
 
 Humans can hold context across partially-completed migrations. They remember "oh right, we're in the middle of renaming 'block' to 'restrict', so this old reference is stale." Agents can't. Each session starts fresh.
 
+But here's the key insight: **updating docs first is what makes the loops do the migration work for you.**
+
+Once the domain doc says "restrict" (Level 1), the entire system works toward alignment:
+
+1. **Triage** scans the codebase and finds modules still using "block" — each one is a bug, because the canonical source says "restrict"
+2. **Dev loop** picks up those issues. When it asks "what's the right term?", it reads the domain doc and finds the answer immediately.
+3. **Self-review** catches any new code that accidentally uses "block" — because the reviewer reads the updated docs and sees the contradiction
+4. **Twin review** flags PRs where old terminology leaked in — citing the glossary entry that says otherwise
+5. **Post-merge audit** verifies: does the merged code match what the docs say it should?
+
+The docs aren't just documentation. They're the **control signal** that tells every loop what "correct" means. Update the docs first, and the loops become the migration engine. Every inconsistency between code and docs is a findable, fileable, fixable bug.
+
+Without the doc update at Level 1, the agent encountering "block" in one file and "restrict" in another has no way to determine which is right. It can't file issues because it doesn't know what's wrong. It can't review because it has no authority to cite. The loops spin but produce nothing useful.
+
+With the doc update at Level 1, every inconsistency is unambiguous. The doc says "restrict." The code says "block." That's a bug. File it. Fix it. Move on.
+
+This is why the cascade order matters: **docs first gives the loops a target to aim at.**
+
 If the migration is incomplete:
 - The agent sees conflicting conventions and can't determine which is current
 - Code review becomes ambiguous ("is this a bug or just not-yet-migrated?")
