@@ -1,6 +1,6 @@
 # The Secret Sauce: Why Documentation Drives Everything
 
-The loops described in `how-i-work.md` are the engine. This document is about the fuel.
+The loops described in the [README](README.md) are the engine. This document is about the fuel.
 
 People who try to replicate this system focus on the automation — the cron jobs, the dispatchers, the twin reviews, the post-merge audits. They miss the thing that makes all of it work: **the documentation investment that happens before any code gets written.**
 
@@ -96,7 +96,7 @@ The documentation investment isn't linear — it compounds:
 
 **Session 50:** The patterns repo has 20+ documented patterns. Code review becomes mechanical — "does this follow Pattern 12?" — instead of subjective.
 
-**Session 100:** Post-merge review can audit against real acceptance criteria from real domain docs. The quality ratchet works because there's something to ratchet against.
+**Session 100:** Post-merge audit can audit against real acceptance criteria from real domain docs. The quality ratchet works because there's something to ratchet against.
 
 Without documentation, session 100 looks like session 1. The agent is still re-deriving the same decisions, still guessing at the same conventions, still producing inconsistent output. There's no compounding because there's nothing to compound on.
 
@@ -127,7 +127,7 @@ The test: "Would this fact be useful to a new team member on day 1?" If yes, it 
 
 Documentation isn't write-once. The loops improve it:
 
-**Post-merge review finds a gap** → "The issue didn't specify behavior for timeout errors" → Update the domain docs to specify timeout semantics → Future issues in that area are more specific → Future PRs handle timeouts correctly from the start.
+**Post-merge audit finds a gap** → "The issue didn't specify behavior for timeout errors" → Update the domain docs to specify timeout semantics → Future issues in that area are more specific → Future PRs handle timeouts correctly from the start.
 
 **Lookback finds noise** → "Reviews keep flagging X but nobody acts on it" → Either X doesn't matter (remove it from patterns) or X matters but isn't understood (improve the documentation of why it matters) → Future reviews are more precise. Note: lookback *recommends* prompt and pattern changes but never applies them autonomously. A human reviews and approves before any review criteria change. Self-modification of the review system requires human oversight. (See [failure modes in the scaling doc](scaling-multiple-repos.md#lookback-self-modification-risk) for the full rationale.)
 

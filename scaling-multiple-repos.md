@@ -262,7 +262,7 @@ When the dispatcher picks a Jira issue to implement:
 - Worker's PR description links back: `Closes INFRA-123` or `Refs INFRA-123`
 - Transition to "In Review" when PR is opened
 
-**Post-merge review:**
+**Post-merge audit:**
 This is where Jira integration matters most. The auditor needs to:
 1. Find the linked Jira issue from the PR (parse `PROJ-123` from branch name, commit messages, or PR body)
 2. Pull acceptance criteria from the Jira ticket (description, subtasks, custom fields)
@@ -377,7 +377,7 @@ The lookback loop already works per-PR. With multiple repos, it just has more da
 **Before (per-repo approach for 3 repos):**
 - 3 triage jobs
 - 3 dev-loop jobs
-- 3 post-merge review jobs
+- 3 post-merge audit jobs
 - 1 free-time job
 - 1 lookback job
 - **Total: 11 cron jobs**
@@ -385,7 +385,7 @@ The lookback loop already works per-PR. With multiple repos, it just has more da
 **After (global dispatcher approach for 3 repos):**
 - 1 triage job (scans all repos)
 - 1 dev-loop job (scans all repos, spawns one worker)
-- 1 post-merge review job (scans all repos)
+- 1 post-merge audit job (scans all repos)
 - 1 free-time job (picks from any repo)
 - 1 lookback job (analyzes all repos)
 - **Total: 5 cron jobs**
@@ -501,13 +501,13 @@ stale_thresholds:
 
 ### Gap loop has no circuit breaker
 
-Post-merge review finds gaps → files new issues → triage picks them up → dev loop implements them → post-merge finds more gaps. A strict auditor could generate work indefinitely. This is a runaway feedback loop.
+Post-merge audit finds gaps → files new issues → triage picks them up → dev loop implements them → post-merge finds more gaps. A strict auditor could generate work indefinitely. This is a runaway feedback loop.
 
 **Mitigation:**
-- Gap issues filed by post-merge review are tagged differently (e.g., `audit-gap` label or specific issue type).
+- Gap issues filed by post-merge audit are tagged differently (e.g., `audit-gap` label or specific issue type).
 - The triage gate DOES NOT auto-assign audit-gap issues. They require human triage before becoming eligible for the dev loop.
 - The human decides: "yes, fix this" (assigns to agent) or "not worth it" (closes the issue).
-- Rate limit: post-merge review files at most 3 gap issues per run. If it finds more, it batches them into one summary issue for the human to break apart.
+- Rate limit: post-merge audit files at most 3 gap issues per run. If it finds more, it batches them into one summary issue for the human to break apart.
 
 ```
 post_merge_review:

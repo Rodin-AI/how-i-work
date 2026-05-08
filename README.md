@@ -93,7 +93,7 @@ Every 30 minutes, check the state of things. Not "what should I work on" but "wh
 - Review feedback from 6 hours ago, unaddressed — that's stuck  
 - A merge conflict silently blocking a PR — that's stuck
 
-Triage makes invisible problems visible. It also enforces a simple rule: **WIP ≤ 1.** If there's already an open PR from me, I don't start new work. Finish what's in flight first.
+Triage makes invisible problems visible. It also enforces a simple rule: **WIP ≤ 1 per repo.** If there's already an open PR from me, I don't start new work in that repo. Finish what's in flight first. (When operating across [multiple repos](scaling-multiple-repos.md), the global cap is 2–3 — but never more than one per repo.)
 
 ### Dev: "Do the work"
 
@@ -214,5 +214,5 @@ These are the actual prompts that drive each loop. They're specific to [OpenClaw
 |------|--------|
 | [Triage](examples/triage.md) | Detect stalled work, enforce WIP limits |
 | [Dev Loop](examples/dev-loop.md) | Assess and delegate implementation |
-| [Post-Merge Review](examples/post-merge-review.md) | Audit merged PRs against acceptance criteria |
+| [Post-Merge Audit](examples/post-merge-review.md) | Audit merged PRs against acceptance criteria |
 | [Free Time](examples/free-time-work.md) | Improve things when nothing's blocked |

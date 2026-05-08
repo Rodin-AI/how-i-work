@@ -177,7 +177,7 @@ See [The Secret Sauce: how documentation compounds](the-secret-sauce.md#how-docu
 
 The system needs three capabilities:
 
-1. **Scheduled execution** — Run a prompt on a timer (every 20-30 min for triage, every 4h for audits)
+1. **Scheduled execution** — Run a prompt on a timer (every 30 min for triage, every 4h for audits)
 2. **Tool access** — The agent can run shell commands (git, build tools, linters) and call APIs (GitHub, Jira)
 3. **Persistence between runs** — The agent's workspace (cloned repo, config files, state) survives between cron ticks
 
@@ -271,7 +271,7 @@ permissions:
 **When to flip `can_merge: true`:**
 - The agent has opened 20+ PRs that were merged without significant rework
 - Twin reviews consistently find only NITs, not WARNINGs or CRITICALs
-- Post-merge review rarely finds gaps (< 1 gap issue per 10 merges)
+- Post-merge audit rarely finds gaps (< 1 gap issue per 10 merges)
 - You trust the test suite to catch regressions (high coverage on critical paths)
 - The human has reviewed enough output to trust the agent's judgment
 
@@ -283,7 +283,7 @@ This is a human decision, not a metric threshold. Some teams never flip it — a
 
 Each loop is an independent cron job. Start with Triage and Dev, add the rest once those are stable.
 
-### Loop 1: Triage (every 20-30 min)
+### Loop 1: Triage (every 30 min)
 
 ```
 Check:
@@ -369,7 +369,7 @@ Do: Reassign PR to human (or apply a "ready" label)
 Signal: No chat message. The assignment IS the notification.
 ```
 
-### Loop 6: Post-Merge Review (every 4 hours)
+### Loop 6: Post-Merge Audit (every 4 hours)
 
 ```
 For each PR merged since last check:
@@ -425,7 +425,7 @@ Triage reads from:
   - Jira (JQL): project = MYPROJ AND assignee = currentUser() AND status = "To Do"
   - GitHub: open PRs from your bot account
 
-Post-merge review files issues to:
+Post-merge audit files issues to:
   - Jira (create issue via API): type = Bug, project = MYPROJ
 
 Link PRs to issues:
@@ -513,7 +513,7 @@ That's a signal something is broken. If two models always agree, one of them isn
 **"The bot opened 15 PRs while I was at lunch."**
 WIP limit exists for a reason. One PR at a time. The agent waits for handoff before starting new work. If you're tempted to raise the limit — don't. Parallel PRs = exponential rebases.
 
-**"Post-merge review files too many issues."**
+**"Post-merge audit files too many issues."**
 Calibrate what counts as a "gap." Missing a NIT from acceptance criteria isn't worth an issue. Missing core functionality is. The threshold should be: "would a user notice this is missing?"
 
 ---
@@ -525,7 +525,7 @@ If you want to start with the absolute minimum and expand:
 1. **Week 1:** Triage + Dev loops only. Agent picks up issues, opens PRs, assigns to human.
 2. **Week 2:** Add Self-Review. Agent reviews its own PR before marking ready.
 3. **Week 3:** Add Twin Review. Two models review every PR.
-4. **Week 4:** Add Post-Merge Review. Audit merged work for completeness.
+4. **Week 4:** Add Post-Merge Audit. Audit merged work for completeness.
 5. **Ongoing:** Add Lookback once you have 5+ reviewed PRs to analyze.
 
 Each step builds on the last. Don't try to run all 7 loops on day one.
@@ -537,11 +537,11 @@ Each step builds on the last. Don't try to run all 7 loops on day one.
 The system works because every loop feeds the next one. Work creates reviews, reviews create issues, issues create work. Quality ratchets up over time because:
 
 1. Nothing ships without review (twin review)
-2. Nothing stays shipped without audit (post-merge review)
+2. Nothing stays shipped without audit (post-merge audit)
 3. Nothing stays broken without a ticket (issue filing)
 4. Nothing stays noisy without pruning (lookback)
 
-If you only implement one thing beyond basic dev work, implement **post-merge review**. It's the loop that catches "good enough" before it becomes technical debt.
+If you only implement one thing beyond basic dev work, implement **post-merge audit**. It's the loop that catches "good enough" before it becomes technical debt.
 
 ---
 
@@ -716,6 +716,6 @@ The templates aren't just for humans writing docs. They're machine-checkable gat
 1. **Triage reads the design doc** and checks: does it pass Phase 1? If not, the issue isn't ready for implementation — flag it.
 2. **Self-review runs Phase 2** against the PR diff. Each checkbox becomes a concrete question: "did the code add error handling for external calls?"
 3. **Twin review cross-references the design** — does the implementation match the mechanism section? Do the test cases cover the edge cases listed?
-4. **Post-merge review checks completeness** — every failure mode in the table should have a corresponding test or handler in the code.
+4. **Post-merge audit checks completeness** — every failure mode in the table should have a corresponding test or handler in the code.
 
 The templates turn subjective review ("does this look good?") into objective verification ("does this satisfy the checklist?"). That's what makes autonomous review possible — the standard is documented, not vibes.
