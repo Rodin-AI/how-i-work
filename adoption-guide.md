@@ -84,10 +84,69 @@ See [The Secret Sauce: how documentation compounds](the-secret-sauce.md#how-docu
 
 ## Prerequisites
 
-- An AI agent runtime with cron/scheduling (OpenClaw, Hermes, or equivalent)
+- An AI agent runtime with cron/scheduling (see "What counts as a runtime" below)
 - Access to your repo (GitHub, GitHub Enterprise, Gitea, etc.)
 - Access to your issue tracker (GitHub Issues, Jira, Linear, etc.)
 - At least two model providers (for twin review independence)
+
+### What counts as a runtime
+
+The system needs three capabilities:
+
+1. **Scheduled execution** — Run a prompt on a timer (every 20-30 min for triage, every 4h for audits)
+2. **Tool access** — The agent can run shell commands (git, build tools, linters) and call APIs (GitHub, Jira)
+3. **Persistence between runs** — The agent's workspace (cloned repo, config files, state) survives between cron ticks
+
+Concrete options:
+
+| Runtime | How it works |
+|---------|-------------|
+| [OpenClaw](https://openclaw.ai) | Built-in cron scheduler, tool access, persistent workspace. What this system was built on. |
+| [Hermes](https://github.com/socrates-ai/hermes) | Temporal-based agent runtime with scheduling and tool use. |
+| GitHub Actions + self-hosted runner | Use `schedule:` triggers. The runner IS the persistent workspace. Cheapest to start but hardest to scale. |
+| Custom cron + CLI agent | A cron job that invokes your agent CLI (`claude`, `aider`, etc.) with a prompt file. Works but you build the glue yourself. |
+| Any agent framework with timers | LangGraph, CrewAI, AutoGen — if it can schedule, run tools, and persist state, it works. |
+
+The loops described here are **runtime-agnostic**. They're prompt patterns + scheduling. If your system can "run this prompt every 30 minutes with access to git and the GitHub API" — you're set.
+
+### Where documentation lives and how the agent reads it
+
+The agent reads documentation by cloning repos and reading files. That's it — no vector databases, no RAG pipelines, no special tooling. Files in a git repo.
+
+**Project docs** live in the project repo itself:
+```
+your-project/
+├── docs/
+│   ├── domain/           # What + why (survives a rewrite)
+│   │   ├── glossary.md
+│   │   ├── architecture.md
+│   │   └── trading-pipeline.md
+│   ├── impl/             # How (implementation-specific)
+│   │   ├── supervision-tree.md
+│   │   └── telemetry.md
+│   ├── TEMPLATE-FEATURE-DESIGN.md
+│   └── TEMPLATE-FEATURE-VALIDATION.md
+├── CONVENTIONS.md    # or docs/conventions.md
+└── ...
+```
+
+**Reference/pattern docs** live in a separate repo per ecosystem:
+```
+your-org/go-patterns/          # or elixir-patterns, rust-patterns, etc.
+├── README.md
+├── error-handling.md
+├── concurrency.md
+├── testing.md
+├── module-structure.md
+└── api-design.md
+```
+
+How the agent accesses them at runtime:
+- **Project docs:** Already there — the agent clones the project repo to work on it, docs are included.
+- **Pattern repos:** Referenced in config (`patterns_repo: your-org/go-patterns`). The agent clones them into its workspace on first use. They're just git repos with markdown files.
+- **No special format required.** Markdown files with clear headings. The agent reads them like a human would — by opening the file and reading it. Structured headings and anchor links help for citability in reviews.
+
+The key insight: documentation that lives in git is documentation that gets versioned, reviewed, and stays in sync with the code. No external knowledge bases that drift.
 
 ---
 
