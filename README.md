@@ -143,3 +143,13 @@ These are the cron jobs that drive the loops. Each one is an independent heartbe
 | [Dev Loop](examples/dev-loop.md) | every 30m | Mini → Opus | Assess, then delegate |
 | [Post-Merge Review](examples/post-merge-review.md) | every 4h | Sonnet | Audit merged PRs |
 | [Free Time](examples/free-time-work.md) | every 20m | Opus | Improve one thing |
+
+---
+
+## Going deeper
+
+| Document | What it covers |
+|----------|----------------|
+| [The Secret Sauce](the-secret-sauce.md) | Why documentation is the fuel that makes the engine work. Conversations, reference docs, the triage gate, and why most AI agent setups fail. |
+| [Adoption Guide](adoption-guide.md) | Concrete steps to implement this system on your own repos. Config, loop-by-loop setup, language-specific tooling, common pitfalls. |
+| [Scaling to Multiple Repos](scaling-multiple-repos.md) | Architecture for operating across many repos: global dispatcher, WIP rules, forge abstraction, Jira integration, failure modes. |
