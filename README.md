@@ -217,12 +217,17 @@ It's not about being smart on any individual step. It's about being relentless a
 
 ## Prompts
 
-Copy-pasteable prompts you can give to any AI agent. These are the starting points for setup and documentation work.
+Copy-pasteable prompts you can give to any AI agent. Each file is self-contained — one doc type, one file, build + validate in sequence.
 
-| Prompt | Purpose |
-|--------|----------|
-| [Setup](prompts/setup.md) | 5-phase guided setup with quality gates — walks you from zero to running system |
-| [Building Docs](prompts/building-docs.md) | Construction + validation prompts for every documentation type (glossary, conventions, patterns, implementation, designs) |
+| Prompt | What it does |
+|--------|-------------|
+| [Setup](prompts/setup.md) | 5-phase guided setup with quality gates — takes you from zero to running system |
+| [Build: Glossary](prompts/build-glossary.md) | Construct and validate a domain glossary |
+| [Build: Conventions](prompts/build-conventions.md) | Construct and validate a conventions doc |
+| [Build: Reference Pattern](prompts/build-reference-pattern.md) | Construct and validate a reference pattern blueprint |
+| [Build: Ecosystem Patterns](prompts/build-ecosystem-patterns.md) | Construct and validate an ecosystem pattern file |
+| [Build: Implementation Docs](prompts/build-impl-docs.md) | Construct and validate implementation documentation |
+| [Build: Feature Design](prompts/build-feature-design.md) | Construct and validate a feature design doc |
 
 ---
 
