@@ -86,6 +86,8 @@ This takes 2-4 hours. It pays back immediately because:
 
 **The test:** If the agent asked "how should I handle errors in this repo?" — could it answer that question by reading your docs? If not, you're not ready for automation.
 
+**The shortcut:** You don't need to write all the docs yourself before starting. Run the [setup prompt](prompts/setup.md) — it does the gap-finding AND creates issues in your tracker for every gap it finds. Those issues become the system's first work items. The loops bootstrap their own fuel: triage picks up the documentation issues, the agent proposes drafts, you review and refine. Within a week, you have enough foundation for real feature work.
+
 ### The documentation sufficiency checklist
 
 Before enabling loops, run through these prompts. For each one, try to answer using ONLY what's written in your repo's docs. If you can't — that's a gap to fill.
