@@ -180,6 +180,92 @@ Most teams spend 80% on implementation and 5% on documentation. Then they wonder
 
 ---
 
+## Reference docs: grounding in reality
+
+There's another layer beyond project documentation that most people miss entirely: **reference documents that ground the agent's knowledge in external reality.**
+
+An LLM has training data. That training data includes millions of opinions about how to write code, how to design systems, how to structure domains. The problem: it's averaged. Ask an agent "write idiomatic Elixir" and you get a blend of blog posts, tutorials, Stack Overflow answers, and production code — weighted by whatever was popular in the training set.
+
+That's not good enough. "Average understanding" produces average code.
+
+### What we actually did
+
+Before writing application code, we built **reference repositories** — curated knowledge extracted from authoritative sources:
+
+**Pattern repos (extracted from top open-source projects):**
+- Analyzed the top 10 Elixir projects by sustained engineering (elixir-lang/elixir, phoenix, ecto, etc.)
+- Analyzed the top 10 Go projects (kubernetes, etcd, prometheus, etc.)
+- Extracted *actual patterns* — not what blogs say is idiomatic, but what battle-tested production code actually does
+- Organized by category: error handling, concurrency, testing, module structure, API design
+- Compared against official style guides and documented where real practice diverges from aspirational docs
+
+**Theory references (language-agnostic, grounded in literature):**
+- Canonical DDD reference — what the terms actually mean per Evans, not "DDD as interpreted by tutorials"
+- CQRS/Event Sourcing reference — precise definitions, tradeoffs, when-to-use-what
+- Cross-language analysis — what DDD concepts survive contact with specific runtimes (e.g., Elixir/OTP changes how you think about aggregates)
+
+### Why this changes everything
+
+**Without reference docs:** "Write idiomatic Elixir" means "write what the model thinks Elixir looks like based on training data." The agent uses patterns from tutorials, outdated practices, and averaged opinions.
+
+**With reference docs:** "Write idiomatic Elixir" means "write what Phoenix, Ecto, and LiveView actually do in production." The agent is grounded in the same reality that experienced developers know from years of reading source code.
+
+The difference is concrete:
+
+| Without reference docs | With reference docs |
+|----------------------|--------------------|
+| GenServer with bloated state | GenServer state is minimal — derived data computed on demand (Pattern: phoenix_live_view's assign_new) |
+| Generic error handling | Errors propagate up via tuples; logging happens at boundaries only (Pattern: ecto's Repo module) |
+| "Accept interfaces" as abstract advice | Specific: io.Reader for input, concrete struct returns, never interface-to-interface (Pattern: kubernetes/client-go) |
+| DDD terms used loosely | Aggregate = consistency boundary, not "big object." Bounded context = linguistic boundary, not "microservice" |
+
+### The grounding effect on each loop
+
+**Dev loop:** When the agent writes code, it checks against patterns extracted from *real projects*, not training-data averages. The code comes out looking like it was written by someone who's read the Phoenix source — because in a meaningful sense, it was.
+
+**Self-review:** The reviewer checks against the same reference. "Does this follow the pattern Phoenix uses for channel authentication?" is a checkable question. "Is this idiomatic?" is subjective.
+
+**Twin review:** Reviewers cite specific patterns by name and URL. "This violates the error-handling pattern from ecto (see: patterns/error-handling.md#let-it-crash)." Actionable, verifiable, not a matter of opinion.
+
+**Post-merge audit:** When checking if a PR delivered what it should, the reference docs define what "correct" implementation of a DDD concept looks like. Without that definition, the audit is just guessing.
+
+### Why training data isn't enough
+
+People assume the model "already knows" how to write good code. It does — in the same way a library contains every book. Having the information exist somewhere in weights is not the same as having it actively grounding every decision.
+
+The reference docs do three things training data can't:
+
+1. **Specificity.** Training data says "handle errors." Reference docs say "use tagged tuples `{:ok, result} | {:error, reason}`, never raise for expected failures, pattern match at boundaries, and return the error unchanged through intermediate layers."
+
+2. **Authority.** Training data is popularity-weighted. Reference docs are curated from authoritative sources. The agent follows what *kubernetes actually does*, not what a blog post about kubernetes recommended five years ago.
+
+3. **Consistency.** Training data gives different answers depending on prompt wording. Reference docs give the same answer every time. The agent can't drift because the reference doesn't drift.
+
+### How to build reference docs
+
+You don't write them from scratch. You extract them:
+
+1. **Identify authoritative sources.** For your language/stack, which projects have the longest sustained engineering, most contributors, and best reputation? Those are your sources.
+
+2. **Extract patterns from source code.** Don't read their docs — read their code. Docs describe aspirations. Code describes reality. Where they diverge, trust the code.
+
+3. **Compare against official guidelines.** Some divergences are intentional (the guideline is aspirational). Some are accidental (the guideline is outdated). Note both.
+
+4. **Organize by concern.** Error handling, concurrency, testing, module structure, API design. Not by project — by the *question* the developer has when they're writing code.
+
+5. **Make them citable.** Each pattern gets a URL, a name, a clear example. Review bots should be able to say "see Pattern X" with a link, not just "consider doing it differently."
+
+### The compound effect
+
+Reference docs compound differently from project docs:
+
+- **Project docs** make THIS codebase better.
+- **Reference docs** make EVERY codebase better.
+
+Once you've extracted Go patterns from kubernetes, those patterns apply to every Go project you work on. The investment amortizes across repos, across teams, across years. Build them once, use them everywhere.
+
+---
+
 ## Summary
 
 The secret sauce isn't the loops. It's what the loops operate on.
