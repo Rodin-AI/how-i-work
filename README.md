@@ -243,3 +243,4 @@ Real prompts that drive each loop. These are written for [OpenClaw](https://open
 | [Dev Loop](examples/dev-loop.md) | Assess and delegate implementation |
 | [Post-Merge Audit](examples/post-merge-review.md) | Audit merged PRs against acceptance criteria |
 | [Free Time](examples/free-time-work.md) | Improve things when nothing's blocked |
+| [PR Ready Checklist](examples/pr-ready-checklist.md) | Gate before marking work ready for human review |

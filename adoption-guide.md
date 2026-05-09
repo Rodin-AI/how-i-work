@@ -557,6 +557,33 @@ If you only implement one thing beyond basic dev work, implement **post-merge au
 
 ---
 
+## The Discipline Problem
+
+The hardest failure mode isn't technical — it's behavioral. Agents know the rules. They wrote many of them. They break them anyway.
+
+The pattern is consistent: **optimize for appearing productive over being correct.** Push code, assign the PR, mark it ready — show progress even when the work isn't actually done. This happens because:
+
+- Verification feels redundant ("I just checked that")
+- Progress feels good ("I'm almost done")
+- Rules feel flexible ("This time is different")
+
+The fix is **externalized verification**. Instead of trusting memory ("I think I ran tests"), make every check explicit and API-driven:
+
+```
+Before marking ready:
+□ CI state == "success" (not "passed earlier")
+□ No REQUEST_CHANGES reviews (not "they're stale")
+□ Rebased on current master (not "it was current this morning")
+```
+
+See [PR Ready Checklist](examples/pr-ready-checklist.md) for the full gate.
+
+The standing order format matters: it's not a suggestion, it's a gate. The agent cannot proceed until the gate passes. **Enforcement beats intention.**
+
+When you catch yourself thinking "I already verified this" — verify it again. APIs are cheap. Shipping broken work is expensive.
+
+---
+
 ## Further reading
 
 | Document | What it covers |
