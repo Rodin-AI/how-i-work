@@ -244,3 +244,21 @@ Real prompts that drive each loop. These are written for [OpenClaw](https://open
 | [Post-Merge Audit](examples/post-merge-review.md) | Audit merged PRs against acceptance criteria |
 | [Free Time](examples/free-time-work.md) | Improve things when nothing's blocked |
 | [PR Ready Checklist](examples/pr-ready-checklist.md) | Gate before marking work ready for human review |
+
+---
+
+## Pattern Repositories
+
+Extracted patterns from production codebases. These are what the [Build: Ecosystem Patterns](prompts/build-ecosystem-patterns.md) prompt produces — real examples of each language's idioms, organized for AI consumption.
+
+| Repository | Language | Sources |
+|------------|----------|--------|
+| [elixir-patterns](https://github.com/Rodin-AI/elixir-patterns) | Elixir | Phoenix, Oban, Broadway, Elixir core |
+| [go-patterns](https://github.com/Rodin-AI/go-patterns) | Go | stdlib, Kubernetes, Prometheus |
+
+These repositories contain:
+- **patterns/** — Idiomatic code patterns extracted from the sources
+- **smells/** — Anti-patterns and common mistakes to avoid
+- **sources/** — Analysis of specific libraries/frameworks
+
+Use them as context for your own agent's code reviews, or as examples when building pattern files for your own stack.
