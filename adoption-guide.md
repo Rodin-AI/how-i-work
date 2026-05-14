@@ -53,7 +53,7 @@ Rough monthly costs for a single active repo:
 | Dev loop (expensive model, triggered) | ~$15–40 | Opus-class model, depends on PR volume |
 | Twin reviews (2 models per PR) | ~$5–20 | ~$0.20–$0.80 per review × 2 models |
 | Self-review (expensive model) | ~$5–15 | One review per PR, Opus-class |
-| Post-merge audit | ~$3–8 | Every 4 hours, usually finds nothing |
+| Post-merge audit | ~$3–8 | Every hour, usually finds nothing |
 | **Total** | **~$30–90/month** | For an active repo with 5–10 PRs/week |
 
 For comparison: one senior engineer costs $15,000–25,000/month. This system doesn't replace them — it removes the grunt work so they can focus on design and decisions.
@@ -189,7 +189,7 @@ That page covers concrete examples, templates, common mistakes, time estimates, 
 
 The system needs three capabilities:
 
-1. **Scheduled execution** — Run a prompt on a timer (every 30 min for triage, every 4h for audits)
+1. **Scheduled execution** — Run a prompt on a timer (every 30 min for triage, every hour for audits)
 2. **Tool access** — The agent can run shell commands (git, build tools, linters) and call APIs (GitHub, Jira)
 3. **Persistence between runs** — The agent's workspace (cloned repo, config files, state) survives between cron ticks
 
@@ -382,7 +382,7 @@ Do: Reassign PR to human (or apply a "ready" label)
 Signal: No chat message. The assignment IS the notification.
 ```
 
-### Loop 6: Post-Merge Audit (every 4 hours)
+### Loop 6: Post-Merge Audit (every hour)
 
 ```
 For each PR merged since last check:

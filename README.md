@@ -59,7 +59,7 @@ A "cron job" is just a task that runs automatically on a schedule — like an al
 | Dev | Every 30 min | "Is there work to do? Dispatch a worker." |
 | Self-Review | After every PR | "Clean context + different model review my diff." |
 | Twin Review | After CI passes | "Two other models review the code." |
-| Post-Merge Audit | Every 4 hours | "Did merged PRs actually deliver what was asked?" |
+| Post-Merge Audit | Every hour | "Did merged PRs actually deliver what was asked?" |
 | Lookback | Every 3 days | "Am I getting better or just making noise?" |
 
 ---
