@@ -61,6 +61,16 @@ What is NOT a gap:
 
 When in doubt, file the issue. A false positive creates a tracked conversation. A missed gap creates hidden debt.
 
+## Rules
+
+- Do not re-audit a PR already in the `audited` list. Check before doing any work on a PR.
+- Do not file more than one issue per PR. Consolidate all gaps for a PR into a single issue.
+- Do not close, edit, or comment on existing issues.
+- Do not audit a PR that has no linked issue. Skip it, log "no linked issue found", and continue.
+- Do not audit PRs that were opened by external contributors unless the config explicitly includes them.
+- If the API returns an error fetching a PR or issue, skip that PR and continue. Do not abort the run.
+- Do not write to the state file until after all auditing is complete for this run.
+
 ## New issue format
 
 Title: `post-merge gap: #<original-pr> — <short description>`

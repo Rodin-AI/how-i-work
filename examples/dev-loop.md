@@ -84,7 +84,19 @@ Create PR using the bot token at <token_path>.
 - Spawn exactly ONE worker per run. Never two.
 - If nothing qualifies: NO_REPLY. Do not invent work.
 - Do not write code yourself. You are assessment only.
+- Do not push commits, open PRs, or modify files in any repo.
+- Do not make any write API calls. No creating issues, labels, or comments.
 - Total dispatcher runtime must be under 60 seconds.
+
+## Worker rules
+
+Include these in the worker prompt:
+
+- Do not start a second task if the first produces a PR. One PR per worker run.
+- Do not push directly to the default branch. All changes go through a PR.
+- Do not modify files outside the target repo.
+- Do not mark the PR ready or assign to the human until self-review passes.
+- If the task is blocked (missing context, ambiguous requirements), open an issue asking for clarification. Do not guess.
 ```
 
 ## Set it up

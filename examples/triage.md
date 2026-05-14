@@ -56,6 +56,15 @@ One bullet per item. Be specific:
 
 Do NOT say "everything looks good" before the list. If there's nothing, NO_REPLY.
 Do NOT include items that are fine — only report problems.
+
+## Rules
+
+- Do not attempt to fix anything. Observe and report only.
+- Do not make any write API calls. No creating issues, labels, comments, or status changes.
+- Do not report the same item twice in one run.
+- Do not report items outside the configured repo.
+- Do not speculate about why something is stuck. Report facts only: what is stuck and for how long.
+- If the API returns an error for one PR, skip it and continue. Do not abort the entire run.
 ```
 
 ## Set it up
