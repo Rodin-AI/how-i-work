@@ -10,15 +10,9 @@ Strict category rotation solves this. The agent can't choose — it just takes t
 
 The WIP check is the other critical piece. If there's already an open PR, free time does nothing. This prevents the failure mode where the agent starts five things in parallel and finishes none of them. Finish what's in flight, *then* start something new.
 
-## The WIP check is non-negotiable
+## Before you start
 
-The most important line in any free-time prompt is:
-
-```
-If there are any open PRs from me (WIP > 0), respond with NO_REPLY and exit immediately.
-```
-
-Without this, free-time will start work regardless of what's already in flight. You'll end up with 3 open PRs, all conflicting, none finished. The WIP check enforces the "one thing at a time" discipline that makes the rest of the system work.
+Read [cron-setup.md](cron-setup.md) and [project-config.md](project-config.md) first. Free time doesn't use a skill file — the logic is short enough to keep inline — but it does read the project config for the `repo`, `token_path`, and `wip_limit` fields.
 
 ## The state file
 
@@ -70,13 +64,9 @@ Pick categories that map to real neglected work in your project. If you never ne
 
 Starting at E means the first run picks A.
 
-**Step 2: Write your category definitions**
+**Step 2: Write your category definitions** — replace the placeholders in the cron prompt below with real descriptions specific to your project. Vague categories produce vague work.
 
-Write a short definition of what each category means for your specific project. Vague categories ("B = Tooling") produce vague work. Specific categories ("B = Fix flaky tests in the test suite — run `mix test` 3x, identify non-determinism, fix it") produce real outcomes.
-
-**Step 3: Create the cron job**
-
-Paste into your OpenClaw chat:
+**Step 3: Create the cron job** — see [cron-setup.md](cron-setup.md) for the full guide. For this loop:
 
 > Set up a cron job called "myproject-free-time" on the schedule "0,20,40 * * * *" (every 20 minutes). Use your strongest model with medium thinking and a 600 second timeout.
 >

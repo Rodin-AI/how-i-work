@@ -10,27 +10,14 @@ This is the quality ratchet. Without it, small gaps accumulate into debt that no
 
 The subtle power: this job makes it psychologically safe to merge imperfect PRs. If something slips through, the system catches it and creates a follow-up. Perfection isn't required at merge time — completeness is eventually guaranteed by the cycle.
 
-## The skill file
+## Before you start
 
-The audit logic lives in a skill file. The cron prompt should be explicit:
+Read [skill-files.md](skill-files.md) and [project-config.md](project-config.md) first — they explain the two structural patterns this loop relies on. This doc only covers what's unique to the post-merge audit.
 
+Your cron prompt:
 ```
 Execute the post-merge-review skill for the <project> project. Read ~/.openclaw/workspace/skills/post-merge-review/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/<project>.yaml. If no new PRs were audited, respond with exactly NO_REPLY.
 ```
-
-## The project config file
-
-```yaml
-# memory/projects/myproject.yaml
-repo: myorg/myproject
-gitea_url: https://gitea.example.com
-token_path: ~/.mycreds/gitea-bot
-audit_lookback_hours: 4
-audit_state_file: memory/projects/myproject-audit-state.json
-issue_label_gap: post-merge-gap
-```
-
-The `audit_state_file` tracks which PRs have already been audited, so each PR is audited exactly once regardless of how many times the job runs.
 
 ## The skill file pattern
 
@@ -103,23 +90,13 @@ The PR diff does not address this because: <explanation>
 
 ## Set it up
 
-**Step 1: Create your project config** (same file used by dev-loop and triage)
+**Step 1: Create your project config** — see [project-config.md](project-config.md). Fields used by this loop: `repo`, `token_path`, `gitea_url`, `exec_node`, `audit_lookback_hours`, `audit_state_file`, `issue_label_gap`.
 
-**Step 2: Create your skill file** at `~/.openclaw/workspace/skills/post-merge-review/SKILL.md`
+**Step 2: Create your skill file** at `~/.openclaw/workspace/skills/post-merge-review/SKILL.md` using the pattern above.
 
-**Step 3: Create the cron job**
-
-Paste into your OpenClaw chat:
+**Step 3: Create the cron job** — see [cron-setup.md](cron-setup.md) for the full guide. For this loop:
 
 > Set up a cron job called "myproject-pr-audit" that runs every hour. Use Sonnet with medium thinking. The prompt should be: "Execute the post-merge-review skill for the myproject project. Read ~/.openclaw/workspace/skills/post-merge-review/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/myproject.yaml. If no new PRs were audited, respond with exactly NO_REPLY." Deliver results to this chat.
-
-**Why these constraints matter:**
-
-- **Sonnet with medium thinking** — Finding gaps requires reading an issue, reading a diff, and comparing them. This is light reasoning work. Medium thinking handles it without the cost of full Opus reasoning.
-- **Every hour, not every 4 hours** — Merges happen throughout the day. Catching a gap the same hour it's introduced keeps context fresh for filing a useful issue. Waiting 4 hours means the context is stale.
-- **Explicit skill path** — The prompt names the exact skill file. The agent doesn't hunt for it.
-- **State file is mandatory** — Without tracking which PRs were audited, the job re-audits the same PRs every run and files duplicate issues. The state file prevents this.
-- **`NO_REPLY` contract** — Same as triage: silence means "nothing new." A message means "gaps were found."
 
 ## Why every hour
 

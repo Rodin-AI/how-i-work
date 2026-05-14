@@ -2,15 +2,15 @@
 
 Real, working prompt structures for each loop. These aren't minimal sketches — they're the actual patterns that make autonomous dev reliable in practice.
 
-## Before you read these
+## Start here: shared concepts
 
-Each example references two things you need to set up first:
+Three docs cover the patterns that every loop relies on. Read these before the individual loop docs.
 
-1. **A project config file** (`memory/projects/<project>.yaml`) — repo URL, token path, node target, label IDs. One file per project, shared across all loops.
-
-2. **A skill file** (`~/.openclaw/workspace/skills/<skill>/SKILL.md`) — the logic for each loop. The cron prompt tells the agent to read the skill file; the skill file drives everything.
-
-This separation is intentional. Your cron prompt stays short and readable. Your logic lives in a file you can edit and version. Your project specifics live in a config file you can copy when adding a second project.
+| Doc | What it covers |
+|-----|----------------|
+| [Project Config](project-config.md) | The YAML file every loop reads — full field reference, which loops use which fields |
+| [Skill Files](skill-files.md) | Why logic lives in skill files, not cron prompts — location convention, structure |
+| [Cron Setup](cron-setup.md) | Model/timeout guide, tool allowlists, NO_REPLY contract, delivery modes |
 
 ## The loops
 
@@ -26,10 +26,10 @@ This separation is intentional. Your cron prompt stays short and readable. Your 
 
 Every loop must follow these contracts or the system breaks down:
 
-**`NO_REPLY`** — When there's nothing to report, the model responds with exactly `NO_REPLY`. Your runtime must treat this as "don't deliver." Without this contract, every run notifies you, you learn to ignore the channel, and you miss real problems.
+**`NO_REPLY`** — When there's nothing to report, the model responds with exactly `NO_REPLY`. Your runtime must treat this as "don't deliver." Full explanation in [cron-setup.md](cron-setup.md).
 
 **WIP ≤ 1** — No loop starts new work if there's already an open PR. The dev loop and free-time loop both check this explicitly. Parallel in-flight work creates merge conflicts, context fragmentation, and unfinished PRs.
 
-**Explicit skill path** — Cron prompts name the exact skill file to read: `Read ~/.openclaw/workspace/skills/<skill>/SKILL.md and follow it exactly.` Not "check my PRs." The agent doesn't hunt for instructions.
+**Explicit skill path** — Cron prompts name the exact skill file to read. Not "check my PRs" — the agent doesn't hunt for instructions.
 
 **State files for deduplication** — Jobs that should run once per event (post-merge audit) track state in a JSON file. Without this, the same PR gets audited on every run.

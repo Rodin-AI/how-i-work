@@ -8,29 +8,13 @@ This job's purpose is to make silence impossible. Every 30 minutes, it asks: **"
 
 The distinction matters. A triage job that tries to *fix* things is doing too much. Its only job is to *see* — to turn invisible stalls into visible status that other loops can act on.
 
-## The skill file
+## Before you start
 
-Triage logic lives in a skill file. The cron prompt should be one line:
+Read [skill-files.md](skill-files.md) and [project-config.md](project-config.md) first — they explain the two structural patterns this loop relies on. This doc only covers what's unique to triage.
 
+Your cron prompt:
 ```
 Run the project-triage skill. Read ~/.openclaw/workspace/skills/project-triage/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/<project>.yaml. If nothing to report, respond with exactly NO_REPLY.
-```
-
-The skill file drives everything. This separation means you can improve your triage logic without editing cron jobs.
-
-## The project config file
-
-```yaml
-# memory/projects/myproject.yaml
-repo: myorg/myproject
-gitea_url: https://gitea.example.com
-token_path: ~/.mycreds/gitea-bot
-wip_limit: 1
-stale_review_hours: 24
-stale_ci_hours: 2
-labels:
-  ready: 42
-  wip: 40
 ```
 
 ## The skill file pattern
@@ -76,22 +60,13 @@ Do NOT include items that are fine — only report problems.
 
 ## Set it up
 
-**Step 1: Create your project config** (same file used by dev-loop — one config per project)
+**Step 1: Create your project config** — see [project-config.md](project-config.md). Fields used by this loop: `repo`, `token_path`, `gitea_url`, `wip_limit`, `stale_review_hours`, `stale_ci_hours`, `labels`.
 
-**Step 2: Create your skill file** at `~/.openclaw/workspace/skills/project-triage/SKILL.md`
+**Step 2: Create your skill file** at `~/.openclaw/workspace/skills/project-triage/SKILL.md` using the pattern above.
 
-**Step 3: Create the cron job**
-
-Paste into your OpenClaw chat:
+**Step 3: Create the cron job** — see [cron-setup.md](cron-setup.md) for the full guide. For this loop:
 
 > Set up a cron job called "myproject-triage" that runs every 30 minutes. Use Sonnet with medium thinking and a 120 second timeout. The prompt should be: "Run the project-triage skill. Read ~/.openclaw/workspace/skills/project-triage/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/myproject.yaml. If nothing to report, respond with exactly NO_REPLY." Deliver results to this chat.
-
-**Why these constraints matter:**
-
-- **Sonnet, not Opus** — Triage is pattern-matching: is CI green, is there a review, is there a conflict. These are yes/no checks. You don't need deep reasoning. Sonnet is fast and cheap and plenty capable.
-- **120s timeout** — Triage should complete in seconds. If it's taking longer, it's doing too much.
-- **`NO_REPLY` contract is mandatory** — Without it, you get a message every 30 minutes saying "everything looks good." That's noise that trains you to ignore the channel. The model must know to respond with exactly `NO_REPLY` when there's nothing to report, and your runtime must handle that as "no delivery."
-- **Explicit skill path** — Don't say "check my PRs." Say exactly which skill file to read and which config to load. Vague instructions get interpreted differently on each run.
 
 ## Why Sonnet, not a cheaper model
 
@@ -103,12 +78,3 @@ Triage reads API responses and makes boolean judgments. The failure modes of che
 
 Sonnet is reliable enough on structured data that false negatives are rare. Go cheaper and you'll start missing real problems.
 
-## The NO_REPLY contract
-
-This is the most important implementation detail.
-
-Without it: you get a notification every 30 minutes. Most say "nothing to report." You learn to ignore the channel. The one time something is actually wrong, you ignore that too.
-
-With it: the channel is silent until there's a real problem. Silence means "all good." A message means "something needs attention." That's the right information density.
-
-Every triage job must have this contract. Configure your runtime to treat `NO_REPLY` as "don't deliver this." Then tell the model: "If nothing to report, respond with exactly NO_REPLY."

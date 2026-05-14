@@ -29,13 +29,9 @@ Worker (expensive, runs only when needed)
 
 Never give the dispatcher tools that allow it to write code or push commits. If it has those tools, it will use them — and a fast cheap model doing "quick fixes" is how you get subtle bugs at 3am.
 
-## The skill file
+## Before you start
 
-The dev loop logic lives in a skill file, not inline in the cron prompt. This matters because:
-
-- Skill files are editable without touching the cron job
-- The logic can be versioned and improved
-- The cron prompt stays readable (one line) instead of 200 words of inline instructions
+Read [skill-files.md](skill-files.md) and [project-config.md](project-config.md) first — they explain the two structural patterns this loop relies on. This doc only covers what's unique to the dev loop.
 
 Your dispatcher cron prompt should be exactly this:
 ```
@@ -43,24 +39,6 @@ dev-loop <project-name>
 ```
 
 And your skill file handles everything. See the [skill pattern](#the-skill-file-pattern) below.
-
-## The project config file
-
-Project-specific details (repo URL, token paths, node targets, branch names, label IDs) live in a YAML config file, not in the cron prompt or skill file. The skill file reads the config.
-
-```yaml
-# memory/projects/myproject.yaml
-repo: myorg/myproject
-gitea_url: https://gitea.example.com   # or omit for GitHub
-token_path: ~/.mycreds/gitea-mybot
-exec_node: my-dev-node                 # where to run tests
-branch_default: main
-labels:
-  ready: 42
-  wip: 40
-```
-
-This separates *how the loop works* (skill) from *what it operates on* (config). When you add a second project, you add a config file and a cron job — you don't touch the skill.
 
 ## The skill file pattern
 
@@ -111,38 +89,13 @@ Create PR using the bot token at <token_path>.
 
 ## Set it up
 
-**Step 1: Create your project config**
+**Step 1: Create your project config** — see [project-config.md](project-config.md) for the full field reference. Fields used by this loop: `repo`, `token_path`, `gitea_url`, `exec_node`, `branch_default`, `wip_limit`, `labels`.
 
-```yaml
-# ~/.openclaw/workspace/memory/projects/myproject.yaml
-repo: myorg/myproject
-gitea_url: https://gitea.example.com
-token_path: ~/.mycreds/gitea-bot
-exec_node: my-dev-node
-branch_default: main
-```
+**Step 2: Create your skill file** at `~/.openclaw/workspace/skills/dev-loop/SKILL.md` using the pattern above. Customize the worker prompt with your project's test command, PR conventions, and standing rules.
 
-**Step 2: Create your skill file**
-
-Save the skill file pattern above to:
-```
-~/.openclaw/workspace/skills/dev-loop/SKILL.md
-```
-
-Customize the worker prompt with your project's test command, PR conventions, and any standing rules.
-
-**Step 3: Create the cron job**
-
-Paste into your OpenClaw chat:
+**Step 3: Create the cron job** — see [cron-setup.md](cron-setup.md) for the full setup guide. For this loop:
 
 > Set up a cron job called "myproject-dev-loop" that runs every 10 minutes. Use a fast model (GPT-4.1 Mini or Haiku) as the dispatcher with a 300 second timeout. Only allow the tools: exec, sessions_spawn, sessions_yield, subagents. The prompt should be exactly: `dev-loop myproject`. Deliver results to this chat only when a worker is spawned.
-
-**Why these constraints matter:**
-
-- **Fast model for dispatcher** — It's just reading APIs and making a decision. You don't need reasoning ability here. Save the expensive model for the worker.
-- **300s dispatcher timeout** — Enough for API calls + spawning. If it takes longer, something is wrong.
-- **Restricted tool list** — Without `toolsAllow`, the dispatcher can reach for exec and start writing code. Restrict it explicitly.
-- **Deliver only on spawn** — If you deliver on every run, you get a NO_REPLY notification every 10 minutes. Only care when something actually happens.
 
 ## Why the priority order matters
 
