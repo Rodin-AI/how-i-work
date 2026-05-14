@@ -10,26 +10,107 @@ Strict category rotation solves this. The agent can't choose — it just takes t
 
 The WIP check is the other critical piece. If there's already an open PR, free time does nothing. This prevents the failure mode where the agent starts five things in parallel and finishes none of them. Finish what's in flight, *then* start something new.
 
+## The WIP check is non-negotiable
+
+The most important line in any free-time prompt is:
+
+```
+If there are any open PRs from me (WIP > 0), respond with NO_REPLY and exit immediately.
+```
+
+Without this, free-time will start work regardless of what's already in flight. You'll end up with 3 open PRs, all conflicting, none finished. The WIP check enforces the "one thing at a time" discipline that makes the rest of the system work.
+
+## The state file
+
+Free-time needs persistent state to rotate categories. Without it, it picks the same category every run.
+
+```json
+// memory/free-time-last.json
+{
+  "last_category": "B",
+  "last_run": "2026-05-14T03:00:00Z",
+  "last_task": "Updated README with missing setup step"
+}
+```
+
+The prompt reads this file, picks the next category in sequence, writes the choice back, then does the work.
+
+## Customize your categories
+
+The default rotation is a starting point. Replace it with what your project actually needs:
+
+**Software project:**
+```
+A = Bugs (filed issues, test failures, error reports)
+B = Tests (coverage gaps, flaky tests, missing edge cases)
+C = Documentation (stale docs, missing examples, unclear explanations)
+D = Dependencies (outdated packages, security advisories)
+E = Refactoring (code smells, duplication, complexity)
+```
+
+**Infrastructure / ops project:**
+```
+A = Security (CVEs, certificate expiry, access audit)
+B = Reliability (alerting gaps, runbook gaps, single points of failure)
+C = Observability (missing metrics, incomplete dashboards)
+D = Cost (idle resources, oversized instances, unused storage)
+E = Documentation (runbooks, architecture docs, onboarding)
+```
+
+Pick categories that map to real neglected work in your project. If you never need to update dependencies, remove that category. If security is critical, make it two slots in the rotation.
+
 ## Set it up
 
-Paste this into your OpenClaw chat:
+**Step 1: Create the state file**
 
-> Set up a cron job called "free-time" on the schedule "0,20,40 * * * *" (every 20 minutes). Use Opus with medium thinking and a 600 second timeout.
+```json
+// memory/free-time-last.json
+{"last_category": "E", "last_run": null, "last_task": null}
+```
+
+Starting at E means the first run picks A.
+
+**Step 2: Write your category definitions**
+
+Write a short definition of what each category means for your specific project. Vague categories ("B = Tooling") produce vague work. Specific categories ("B = Fix flaky tests in the test suite — run `mix test` 3x, identify non-determinism, fix it") produce real outcomes.
+
+**Step 3: Create the cron job**
+
+Paste into your OpenClaw chat:
+
+> Set up a cron job called "myproject-free-time" on the schedule "0,20,40 * * * *" (every 20 minutes). Use your strongest model with medium thinking and a 600 second timeout.
 >
 > The prompt should be:
 >
-> "Free time. Read memory/free-time-last.md for the last category. Pick the NEXT one in rotation: A → B → C → D → E → A. Write your choice to memory/free-time-last.md immediately.
+> "Free time for myproject. Read memory/free-time-last.json for the last category. Pick the NEXT one in rotation: A → B → C → D → E → A. Write your choice to memory/free-time-last.json immediately (before doing any work).
 >
-> Categories: A=Bugs, B=Tooling, C=Experiments, D=Features, E=Infrastructure.
+> Categories:
+> A = <your category A>
+> B = <your category B>
+> C = <your category C>
+> D = <your category D>
+> E = <your category E>
 >
-> Do ONE task from that category, then exit. If I already have an open PR (WIP > 0), respond with NO_REPLY. Log one line to memory/YYYY-MM-DD.md."
+> FIRST: Check open PRs in <repo> using token at <token_path>. If any open PRs exist from me, respond with NO_REPLY immediately — do not start new work.
+>
+> Do ONE task from the selected category. Create a PR if code changes are needed. Log one line to memory/YYYY-MM-DD.md: what category, what you did."
 >
 > Deliver results to this chat.
 
-Then customize the categories:
+**Why these constraints matter:**
 
-> Categories: A=Security, B=Documentation, C=Tests, D=Refactoring, E=Dependencies
+- **Write state BEFORE doing work** — If the job times out or crashes mid-task, you still want the category rotation to have advanced. Writing state first prevents the same category from being stuck forever when runs fail.
+- **Strong model with medium thinking** — Most runs bail immediately because of the WIP check, costing almost nothing. The few runs that actually do work need to implement features, fix subtle bugs, or apply security patches. These require real capability. The economics work: cheap exits (most of the time) fund capable execution (when it matters).
+- **600s timeout** — Free-time tasks are real work. Give it enough time.
+- **ONE task** — The constraint is important. "Do some cleanup" turns into a 3-hour refactor. "Do one task" means: find the highest-priority item in the category, do that, stop.
+- **Log to daily file** — Over time, this creates an audit trail of what free time actually produced. Useful for the lookback loop.
 
-## Why Opus for idle work
+## The failure modes this prevents
 
-Most free-time runs bail immediately because of the WIP check — costing almost nothing. The few runs that actually do work need to implement features, fix subtle bugs, or run experiments. These are creative tasks that benefit from the strongest reasoning model. The economics work out: cheap exits (most of the time) fund expensive execution (when it matters).
+**Parallel work explosion** — Without the WIP check, free-time kicks off a new task every 20 minutes regardless of what's in flight. After a few hours you have 9 open PRs. The WIP check prevents this.
+
+**Category starvation** — Without forced rotation, the agent would pick the most interesting category every time. Documentation never gets touched. Security updates never happen. Rotation ensures every category gets attention.
+
+**Scope creep** — Without the "ONE task" constraint, free-time runs turn into open-ended improvement sessions. The single-task constraint keeps each run bounded and predictable.
+
+**State corruption after crash** — Without writing state first, a crash during execution leaves state pointing to the previous category. Next run picks the same category again. Writing state before work prevents this.
