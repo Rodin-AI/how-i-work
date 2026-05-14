@@ -59,12 +59,23 @@ Do NOT include items that are fine — only report problems.
 
 ## Rules
 
-- Do not attempt to fix anything. Observe and report only.
-- Do not make any write API calls. No creating issues, labels, comments, or status changes.
-- Do not report the same item twice in one run.
-- Do not report items outside the configured repo.
-- Do not speculate about why something is stuck. Report facts only: what is stuck and for how long.
-- If the API returns an error for one PR, skip it and continue. Do not abort the entire run.
+- **Do not attempt to fix anything. Observe and report only.**
+  Triage that fixes things is doing two jobs at once — neither reliably. The dev loop is responsible for fixes. If triage starts patching CI configs or applying labels, it will sometimes make things worse and always obscure what actually happened.
+
+- **Do not make any write API calls. No creating issues, labels, comments, or status changes.**
+  Write access is the mechanism by which scope creep happens. A read-only triage job cannot accidentally close a PR, apply the wrong label, or spam a thread. Remove the temptation entirely.
+
+- **Do not report the same item twice in one run.**
+  A PR can satisfy multiple stuck criteria simultaneously (failing CI *and* stale review). Reporting it twice makes the output harder to read and implies more problems than exist.
+
+- **Do not report items outside the configured repo.**
+  Without this constraint, a triage job with broad API access will start pulling in PRs from other repos it can see. The report becomes noise.
+
+- **Do not speculate about why something is stuck. Report facts only: what is stuck and for how long.**
+  "CI is probably failing because of the flaky test" is a guess. It may be wrong and it trains the human to dismiss triage output as opinion rather than signal. Stick to what the API returns.
+
+- **If the API returns an error for one PR, skip it and continue. Do not abort the entire run.**
+  A single 404 or timeout should not silence the entire triage report. Other PRs may have real problems. Log the error, skip that PR, continue.
 ```
 
 ## Set it up

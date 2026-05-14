@@ -63,13 +63,26 @@ When in doubt, file the issue. A false positive creates a tracked conversation. 
 
 ## Rules
 
-- Do not re-audit a PR already in the `audited` list. Check before doing any work on a PR.
-- Do not file more than one issue per PR. Consolidate all gaps for a PR into a single issue.
-- Do not close, edit, or comment on existing issues.
-- Do not audit a PR that has no linked issue. Skip it, log "no linked issue found", and continue.
-- Do not audit PRs that were opened by external contributors unless the config explicitly includes them.
-- If the API returns an error fetching a PR or issue, skip that PR and continue. Do not abort the run.
-- Do not write to the state file until after all auditing is complete for this run.
+- **Do not re-audit a PR already in the `audited` list. Check before doing any work on a PR.**
+  The job runs every hour. Without state tracking, every PR in the lookback window gets audited on every run — filing the same gap issues repeatedly and polluting the issue tracker with duplicates.
+
+- **Do not file more than one issue per PR. Consolidate all gaps for a PR into a single issue.**
+  Multiple small issues per PR creates overhead: each one needs to be triaged, labeled, and tracked separately. A single issue with all gaps is easier to act on and closes cleanly when the gaps are addressed.
+
+- **Do not close, edit, or comment on existing issues.**
+  The audit job's only write action is filing new issues. Touching existing issues introduces unpredictable side effects — accidentally closing a gap that wasn't actually fixed, or overwriting human comments with stale analysis.
+
+- **Do not audit a PR that has no linked issue. Skip it, log "no linked issue found", and continue.**
+  Without a linked issue there are no acceptance criteria to compare against. The audit would either hallucinate requirements or produce noise. Skipping preserves signal quality.
+
+- **Do not audit PRs opened by external contributors unless the config explicitly includes them.**
+  External PRs may not follow the same issue-linking conventions. Filing gap issues against them without explicit opt-in creates confusing notifications for outside contributors.
+
+- **If the API returns an error fetching a PR or issue, skip that PR and continue. Do not abort the run.**
+  A single network error or missing issue should not prevent the rest of the batch from being audited. Log the error and move on.
+
+- **Do not write to the state file until after all auditing is complete for this run.**
+  If the job is interrupted mid-run, writing state early would mark PRs as audited when they weren't fully checked. Writing at the end ensures the state file only reflects completed work.
 
 ## New issue format
 
