@@ -10,16 +10,137 @@ This is the quality ratchet. Without it, small gaps accumulate into debt that no
 
 The subtle power: this job makes it psychologically safe to merge imperfect PRs. If something slips through, the system catches it and creates a follow-up. Perfection isn't required at merge time — completeness is eventually guaranteed by the cycle.
 
+## Before you start
+
+Read [skill-files.md](skill-files.md) and [project-config.md](project-config.md) first — they explain the two structural patterns this loop relies on. This doc only covers what's unique to the post-merge audit.
+
+Your cron prompt:
+```
+Execute the post-merge-review skill for the <project> project. Read ~/.openclaw/workspace/skills/post-merge-review/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/<project>.yaml. If no new PRs were audited, respond with exactly NO_REPLY.
+```
+
+## The skill file pattern
+
+```markdown
+# post-merge-review skill
+
+## Trigger
+Message matches: `Execute the post-merge-review skill` with config path
+
+## Steps
+
+1. Load project config
+2. Load audit state from `audit_state_file` (create if missing: `{"audited": []}`)
+3. Fetch PRs merged in the last `audit_lookback_hours` hours
+4. Filter out any PR numbers already in `audited`
+5. For each unaudited PR:
+   a. Fetch the PR body and linked issue number (look for "Closes #N", "Fixes #N", "Resolves #N")
+   b. Fetch the linked issue body (acceptance criteria, requirements)
+   c. Fetch the PR diff
+   d. Compare: does the diff address every item in the issue?
+   e. If gaps exist: file a new issue with label `issue_label_gap`
+   f. Add PR number to `audited` list
+6. Save updated audit state
+7. If no PRs were audited this run: NO_REPLY
+8. If PRs were audited but no gaps found: brief summary, no new issues filed
+9. If gaps found: report what was filed
+
+## Gap detection — what to look for
+
+A "gap" is any item in the issue that the PR diff does not address:
+
+- Acceptance criteria listed in the issue not implemented in the diff
+- Error handling mentioned in the issue not present in the diff
+- Test coverage requested in the issue not visible in the diff
+- Documentation updates mentioned but not committed
+
+What is NOT a gap:
+- Stylistic differences from how you'd personally implement it
+- Optimizations the issue didn't ask for
+- Things the issue mentioned as "future work" or "out of scope"
+
+When in doubt, file the issue. A false positive creates a tracked conversation. A missed gap creates hidden debt.
+
+## Rules
+
+- **Do not re-audit a PR already in the `audited` list. Check before doing any work on a PR.**
+  The job runs every hour. Without state tracking, every PR in the lookback window gets audited on every run — filing the same gap issues repeatedly and polluting the issue tracker with duplicates.
+
+- **Do not file more than one issue per PR. Consolidate all gaps for a PR into a single issue.**
+  Multiple small issues per PR creates overhead: each one needs to be triaged, labeled, and tracked separately. A single issue with all gaps is easier to act on and closes cleanly when the gaps are addressed.
+
+- **Do not close, edit, or comment on existing issues.**
+  The audit job's only write action is filing new issues. Touching existing issues introduces unpredictable side effects — accidentally closing a gap that wasn't actually fixed, or overwriting human comments with stale analysis.
+
+- **Do not audit a PR that has no linked issue. Skip it, log "no linked issue found", and continue.**
+  Without a linked issue there are no acceptance criteria to compare against. The audit would either hallucinate requirements or produce noise. Skipping preserves signal quality.
+
+- **Do not audit PRs opened by external contributors unless the config explicitly includes them.**
+  External PRs may not follow the same issue-linking conventions. Filing gap issues against them without explicit opt-in creates confusing notifications for outside contributors.
+
+- **If the API returns an error fetching a PR or issue, skip that PR and continue. Do not abort the run.**
+  A single network error or missing issue should not prevent the rest of the batch from being audited. Log the error and move on.
+
+- **Do not write to the state file until after all auditing is complete for this run.**
+  If the job is interrupted mid-run, writing state early would mark PRs as audited when they weren't fully checked. Writing at the end ensures the state file only reflects completed work.
+
+## New issue format
+
+Title: `post-merge gap: #<original-pr> — <short description>`
+
+Body:
+```
+## Gap Found
+
+**Source PR:** #<N> — <PR title>
+**Source Issue:** #<M> — <issue title>
+
+## What Was Missed
+
+<specific description of the gap — quote from the original issue>
+
+## Evidence
+
+<quote from the original issue requirement>
+
+The PR diff does not address this because: <explanation>
+
+## Suggested Fix
+
+<brief description of what would close this gap>
+```
+```
+
 ## Set it up
 
-Paste this into your OpenClaw chat:
+**Step 1: Create your project config** — see [project-config.md](project-config.md). Fields used by this loop: `repo`, `token_path`, `gitea_url`, `exec_node`, `audit_lookback_hours`, `audit_state_file`, `issue_label_gap`.
 
-> Set up a cron job called "post-merge-review" that runs every 4 hours. Use Sonnet with medium thinking. It should check recently merged PRs, find each one's linked issue, and verify all acceptance criteria were addressed. If anything is incomplete, file a new bug issue. If nothing was missed, respond with NO_REPLY. Deliver results to this chat.
+**Step 2: Create your skill file** at `~/.openclaw/workspace/skills/post-merge-review/SKILL.md` using the pattern above.
 
-Then add your project specifics:
+**Step 3: Create the cron job** — see [cron-setup.md](cron-setup.md) for the full guide. For this loop:
 
-> ...check merged PRs on github.com/myorg/myproject from the last 4 hours. Issues are linked via "Closes #123" in PR bodies. File new issues with the label "post-merge-gap".
+> Set up a cron job called "myproject-pr-audit" that runs every hour. Use Sonnet with medium thinking. The prompt should be: "Execute the post-merge-review skill for the myproject project. Read ~/.openclaw/workspace/skills/post-merge-review/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/myproject.yaml. If no new PRs were audited, respond with exactly NO_REPLY." Deliver results to this chat.
 
-## Why every 4 hours
+## Why every hour
 
-Merges happen a few times a day at most. Running this more frequently burns compute checking empty state. Every 4 hours is frequent enough to catch gaps the same day they're introduced — before the context fades from everyone's memory.
+Merges happen a few times a day at most. Running every hour means:
+- Each merge is audited the same day it lands
+- The PR author and context are still fresh when the gap issue is filed
+- The gap issue flows into triage promptly instead of sitting unnoticed
+
+If merges are rare, the job is cheap — it runs, finds nothing new to audit, and exits in seconds.
+
+## The state file pattern
+
+The audit state file prevents duplicate issues. It's a simple JSON file:
+
+```json
+{
+  "audited": [42, 43, 51],
+  "last_run": "2026-05-14T04:00:00Z"
+}
+```
+
+The skill reads this at the start of each run, adds newly audited PR numbers, and writes it back. PR numbers in `audited` are skipped even if they're still within the lookback window.
+
+This means: each PR is audited exactly once. The lookback window just determines which recent PRs to *consider* — the state file determines which ones still need attention.

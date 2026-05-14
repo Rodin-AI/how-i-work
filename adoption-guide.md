@@ -53,7 +53,7 @@ Rough monthly costs for a single active repo:
 | Dev loop (expensive model, triggered) | ~$15–40 | Opus-class model, depends on PR volume |
 | Twin reviews (2 models per PR) | ~$5–20 | ~$0.20–$0.80 per review × 2 models |
 | Self-review (expensive model) | ~$5–15 | One review per PR, Opus-class |
-| Post-merge audit | ~$3–8 | Every 4 hours, usually finds nothing |
+| Post-merge audit | ~$3–8 | Every hour, usually finds nothing |
 | **Total** | **~$30–90/month** | For an active repo with 5–10 PRs/week |
 
 For comparison: one senior engineer costs $15,000–25,000/month. This system doesn't replace them — it removes the grunt work so they can focus on design and decisions.
@@ -189,7 +189,7 @@ That page covers concrete examples, templates, common mistakes, time estimates, 
 
 The system needs three capabilities:
 
-1. **Scheduled execution** — Run a prompt on a timer (every 30 min for triage, every 4h for audits)
+1. **Scheduled execution** — Run a prompt on a timer (every 30 min for triage, every hour for audits)
 2. **Tool access** — The agent can run shell commands (git, build tools, linters) and call APIs (GitHub, Jira)
 3. **Persistence between runs** — The agent's workspace (cloned repo, config files, state) survives between cron ticks
 
@@ -304,14 +304,15 @@ Check:
   3. WIP count — do I already have an open PR?
 
 Output:
-  - If WIP > 0 and PR needs attention → fix it (enter Dev loop)
-  - If WIP == 0 and unblocked issue exists → start it (enter Dev loop)
-  - Otherwise → skip (or enter Free Time)
+  - Report anything stuck (failing CI, stale reviews, merge conflicts)
+  - If nothing stuck: NO_REPLY
 ```
 
 **The critical rule:** WIP ≤ 1. If you already have an open PR, you don't start new work. You finish what's in flight.
 
-### Loop 2: Dev (triggered by Triage or human request)
+Triage only observes and reports. It does not trigger the dev loop directly. The dev loop runs on its own schedule and makes its own assessment. Keeping them separate means triage can never accidentally kick off work, and the dev loop never depends on triage having run first.
+
+### Loop 2: Dev (every 30 min, independent of triage)
 
 ```
 1. Read the issue — understand the PROBLEM, not the title
@@ -381,7 +382,7 @@ Do: Reassign PR to human (or apply a "ready" label)
 Signal: No chat message. The assignment IS the notification.
 ```
 
-### Loop 6: Post-Merge Audit (every 4 hours)
+### Loop 6: Post-Merge Audit (every hour)
 
 ```
 For each PR merged since last check:

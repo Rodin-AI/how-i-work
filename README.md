@@ -56,10 +56,10 @@ A "cron job" is just a task that runs automatically on a schedule — like an al
 | What | How often | What it does |
 |------|-----------|--------------|
 | Triage | Every 30 min | "Is anything stuck? Failing CI? Unaddressed feedback?" |
-| Dev | Triggered | "There's work to do. Do it." |
+| Dev | Every 30 min | "Is there work to do? Dispatch a worker." |
 | Self-Review | After every PR | "Clean context + different model review my diff." |
 | Twin Review | After CI passes | "Two other models review the code." |
-| Post-Merge Audit | Every 4 hours | "Did merged PRs actually deliver what was asked?" |
+| Post-Merge Audit | Every hour | "Did merged PRs actually deliver what was asked?" |
 | Lookback | Every 3 days | "Am I getting better or just making noise?" |
 
 ---
@@ -101,6 +101,8 @@ Every 30 minutes, check the state of things. Not "what should I work on" but "wh
 - A merge conflict silently blocking a PR — that's stuck
 
 Triage makes invisible problems visible. It also enforces a simple rule: **WIP ≤ 1 per repo.** If there's already an open PR from me, I don't start new work in that repo. Finish what's in flight first. (When operating across [multiple repos](scaling-multiple-repos.md), the global cap is 2–3 — but never more than one per repo.)
+
+Triage only observes and reports. The dev loop runs independently on its own schedule — it doesn't wait to be triggered by triage.
 
 ### Dev: "Do the work"
 

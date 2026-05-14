@@ -138,10 +138,10 @@ Generate the system configuration:
 1. **Config file** — repos, models, permissions, schedules
 2. **Cron prompts** — one for each loop:
    - Triage (cheap model, every 30 min)
-   - Dev loop (expensive model, triggered by triage)
+   - Dev loop (fast dispatcher model, every 30 min — spawns expensive worker when needed)
    - Self-review (expensive model, clean context, different model than dev)
    - Twin review (two different providers, specialized prompts)
-   - Post-merge audit (every 4 hours)
+   - Post-merge audit (every hour)
    - Lookback (every 3 days)
 3. **Documentation templates** — feature design + validation checklist in docs/
 4. **Review prompts** — specialized per-reviewer (structural vs semantic focus)
