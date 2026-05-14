@@ -28,25 +28,31 @@ Message matches: `Run the project-triage skill` with a config path
 ## Steps
 
 1. Load project config
-2. Fetch all open issues (excluding blocked/needs-split/needs-detail)
-3. For each issue — check quality:
-   - Body empty or no problem statement → add `needs-detail` label
-   - No acceptance criteria or definition of done → add `needs-detail` label
+2. **Load domain docs** (design docs, CLAUDE.md, validation template, regulations) — these are the authority on how the system must behave
+3. Fetch all open issues (excluding blocked/needs-split/needs-detail)
+4. For each issue — evaluate against domain docs:
+   - Body empty or no problem statement → `needs-detail`
+   - Conflicts with domain docs/regulations → `needs-detail` + comment with specific conflict
+   - Ambiguous and docs don't resolve it → `needs-detail` + flag for human decision
+   - Docs resolve the ambiguity → enrich issue with context comment, no label change
+   - Clear and consistent → no action
    The dev loop will not pick up a `needs-detail` issue.
-4. Fetch all open PRs via API
-5. For each open PR, check:
+5. Fetch all open PRs via API
+6. For each open PR, check:
    - CI status (pending/failed/missing)
    - Review state (REQUEST_CHANGES present? Reviews stale?)
    - Merge conflict status
    - Age since last update
-6. Check issue queue: any new unassigned implementation issues?
-7. Check WIP: more than wip_limit open PRs from bot account?
-8. Report anything that qualifies as "stuck" (see thresholds below)
-9. If nothing stuck: NO_REPLY
+7. Check issue queue: any new unassigned implementation issues?
+8. Check WIP: more than wip_limit open PRs from bot account?
+9. Report anything that qualifies as "stuck" (see thresholds below)
+10. If nothing stuck: NO_REPLY
 
 ## Stuck thresholds (use config values, fall back to these defaults)
 
-- Issue missing problem statement or acceptance criteria
+- Issue missing problem statement
+- Issue conflicts with domain docs (flag with explanation)
+- Issue ambiguous against docs (flag for human)
 - CI pending or failed for > 2 hours
 - REQUEST_CHANGES review not addressed for > 24 hours
 - Merge conflict present (any age)
@@ -56,7 +62,9 @@ Message matches: `Run the project-triage skill` with a config path
 ## Output format (when there IS something to report)
 
 One bullet per item. Be specific:
-- "Issue #12: needs detail (no acceptance criteria)"
+- "Issue #12: needs detail (empty body)"
+- "Issue #15: needs human decision — docs don't specify how X should behave when Y"
+- "Issue #18: conflicts with trading regulation Z — proposes double-fill which is prohibited"
 - "PR #42: CI failing for 3h (last commit: abc1234)"
 - "PR #38: REQUEST_CHANGES from @reviewer not addressed (18h ago)"
 - "PR #51: merge conflict present"
