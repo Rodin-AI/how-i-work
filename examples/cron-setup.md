@@ -27,8 +27,6 @@ And your runtime must be configured to suppress delivery when the response is `N
 | Dev worker | Strong (Sonnet, Opus) | medium | 600s | Real implementation work. Needs capability and time. |
 | Triage | Sonnet | medium | 120s | Pattern matching on API data. Fast, structured. |
 | Post-merge audit | Sonnet | medium | 300s | Reading diffs + comparing to acceptance criteria. |
-| Free time | Strong (Sonnet, Opus) | medium | 600s | Real work. Most runs bail immediately (WIP check), so cost is low. |
-
 **Never use a strong model for a dispatcher.** Dispatchers check APIs and spawn workers. They do not reason. A fast model costs fractions of a cent per run. An expensive model costs dollars per run. At 48 runs/day that difference matters.
 
 ## Tool allowlists

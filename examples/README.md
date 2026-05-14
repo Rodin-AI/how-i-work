@@ -19,7 +19,6 @@ Three docs cover the patterns that every loop relies on. Read these before the i
 | [Triage](triage.md) | `project-triage` skill | Every 30 min | Surface stuck work — CI failures, stale reviews, merge conflicts |
 | [Dev Loop](dev-loop.md) | `dev-loop` skill | Every 10 min | Dispatch work to a worker when there's something to do |
 | [Post-Merge Audit](post-merge-review.md) | `post-merge-review` skill | Every hour | Verify merged PRs delivered what the issue asked for |
-| [Free Time](free-time-work.md) | _(inline)_ | Every 20 min | Work on maintenance tasks when nothing else is in flight |
 | [PR Ready Checklist](pr-ready-checklist.md) | _(standing order)_ | Before every handoff | Gate: verify CI, reviews, and rebase before marking ready |
 
 ## The contracts that matter
