@@ -64,7 +64,7 @@ When in doubt, file the issue. A false positive creates a tracked conversation. 
 ## Rules
 
 - **Do not re-audit a PR already in the `audited` list. Check before doing any work on a PR.**
-  The job runs every hour. Without state tracking, every PR in the lookback window gets audited on every run — filing the same gap issues repeatedly and polluting the issue tracker with duplicates.
+  The job runs every 4 hours. Without state tracking, every PR in the lookback window gets audited on every run — filing the same gap issues repeatedly and polluting the issue tracker with duplicates.
 
 - **Do not file more than one issue per PR. Consolidate all gaps for a PR into a single issue.**
   Multiple small issues per PR creates overhead: each one needs to be triaged, labeled, and tracked separately. A single issue with all gaps is easier to act on and closes cleanly when the gaps are addressed.
@@ -119,14 +119,14 @@ The PR diff does not address this because: <explanation>
 
 **Step 3: Create the cron job** — see [cron-setup.md](cron-setup.md) for the full guide. For this loop:
 
-> Set up a cron job called "myproject-pr-audit" that runs every hour. Use Sonnet with medium thinking. The prompt should be: "Execute the post-merge-review skill for the myproject project. Read ~/.openclaw/workspace/skills/post-merge-review/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/myproject.yaml. If no new PRs were audited, respond with exactly NO_REPLY." Deliver results to this chat.
+> Set up a cron job called "myproject-pr-audit" that runs every 4 hours. Use Sonnet with medium thinking. The prompt should be: "Execute the post-merge-review skill for the myproject project. Read ~/.openclaw/workspace/skills/post-merge-review/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/myproject.yaml. If no new PRs were audited, respond with exactly NO_REPLY." Deliver results to this chat.
 
-## Why every hour
+## Why every 4 hours
 
-Merges happen a few times a day at most. Running every hour means:
-- Each merge is audited within an hour of landing
+Merges happen a few times a day at most. Running every 4 hours means:
+- Each merge is audited the same day it lands
 - The PR author and context are still fresh when the gap issue is filed
-- The gap issue flows into triage promptly instead of sitting for hours
+- The gap issue flows into triage promptly instead of sitting unnoticed
 
 If merges are rare, the job is cheap — it runs, finds nothing new to audit, and exits in seconds.
 

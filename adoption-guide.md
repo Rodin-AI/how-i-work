@@ -304,14 +304,15 @@ Check:
   3. WIP count — do I already have an open PR?
 
 Output:
-  - If WIP > 0 and PR needs attention → fix it (enter Dev loop)
-  - If WIP == 0 and unblocked issue exists → start it (enter Dev loop)
-  - Otherwise → skip (or enter Free Time)
+  - Report anything stuck (failing CI, stale reviews, merge conflicts)
+  - If nothing stuck: NO_REPLY
 ```
 
 **The critical rule:** WIP ≤ 1. If you already have an open PR, you don't start new work. You finish what's in flight.
 
-### Loop 2: Dev (triggered by Triage or human request)
+Triage only observes and reports. It does not trigger the dev loop directly. The dev loop runs on its own schedule and makes its own assessment. Keeping them separate means triage can never accidentally kick off work, and the dev loop never depends on triage having run first.
+
+### Loop 2: Dev (every 30 min, independent of triage)
 
 ```
 1. Read the issue — understand the PROBLEM, not the title

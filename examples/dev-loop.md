@@ -127,7 +127,7 @@ Include these in the worker prompt:
 
 **Step 3: Create the cron job** — see [cron-setup.md](cron-setup.md) for the full setup guide. For this loop:
 
-> Set up a cron job called "myproject-dev-loop" that runs every 10 minutes. Use a fast model (GPT-4.1 Mini or Haiku) as the dispatcher with a 300 second timeout. Only allow the tools: exec, sessions_spawn, sessions_yield, subagents. The prompt should be exactly: `dev-loop myproject`. Deliver results to this chat only when a worker is spawned.
+> Set up a cron job called "myproject-dev-loop" that runs every 30 minutes. Use a fast model (GPT-4.1 Mini or Haiku) as the dispatcher with a 300 second timeout. Only allow the tools: exec, sessions_spawn, sessions_yield, subagents. The prompt should be exactly: `dev-loop myproject`. Deliver results to this chat only when a worker is spawned.
 
 ## Why the priority order matters
 
@@ -145,4 +145,4 @@ The order isn't arbitrary — it's a triage of urgency:
 
 **Parallel work explosion** — Without WIP=1 enforcement, the dispatcher spawns a worker for every open issue and you end up with five in-flight PRs that all conflict. The priority order + WIP check prevents this.
 
-**Expensive idle polling** — Without the dispatcher/worker split, you're running an expensive model every 10 minutes even when there's nothing to do. 95% of those runs find nothing. The dispatcher run costs cents; the worker run costs dollars. Only fire the worker when there's confirmed work.
+**Expensive idle polling** — Without the dispatcher/worker split, you're running an expensive model every 30 minutes even when there's nothing to do. 95% of those runs find nothing. The dispatcher run costs cents; the worker run costs dollars. Only fire the worker when there's confirmed work.
