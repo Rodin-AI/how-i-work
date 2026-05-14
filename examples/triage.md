@@ -103,13 +103,18 @@ Do NOT include items that are fine — only report problems.
 
 > Set up a cron job called "myproject-triage" that runs every 30 minutes. Use Sonnet with medium thinking and a 120 second timeout. The prompt should be: "Run the project-triage skill. Read ~/.openclaw/workspace/skills/project-triage/SKILL.md and follow it exactly. Load project config from ~/.openclaw/workspace/memory/projects/myproject.yaml. If nothing to report, respond with exactly NO_REPLY." Deliver results to this chat.
 
-## Why Sonnet, not a cheaper model
+## Why Opus with high thinking, not a fast model
 
-Triage reads API responses and makes boolean judgments. The failure modes of cheaper models here are:
+Triage now does two distinct kinds of work:
 
-- Missing a finding that's clearly present in the API data
-- Misreading a timestamp (is 3 hours ago > 2 hours? Yes, but some models fumble this)
-- Hallucinating a status that isn't in the API response
+**Structured data checks** (CI status, timestamps, label presence) — a fast model handles this fine.
 
-Sonnet is reliable enough on structured data that false negatives are rare. Go cheaper and you'll start missing real problems.
+**Domain reasoning** (does this issue conflict with our regulations? is this ambiguous or does the doc resolve it? what question does the human need to answer?) — this requires genuine reasoning. The failure modes of a fast model here are:
+
+- Confidently resolving ambiguity that should be escalated to a human
+- Missing a conflict between an issue and a domain invariant
+- Treating "I don't know" as "looks fine"
+- Hallucinating resolution from training data instead of the actual domain docs
+
+The cost of a wrong call here is high: a bad issue enters the dev loop, produces a design doc built on false assumptions, and the post-merge review files the resulting bugs. Opus with high thinking makes that failure mode rare enough to trust.
 
